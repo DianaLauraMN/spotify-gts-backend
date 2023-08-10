@@ -6,7 +6,7 @@ const app = express();
 const PORT = 3000;
 
 const clientId = '34a5174f68d8473ebb3a54a85d0b5d8f';
-const clientSecret = '8a1d456aa6844dcc932716458b402747';
+const clientSecret = '8149dd56104c4123a59401f51c8c2340';
 
 app.use(cors({
   origin: 'http://localhost:5173',

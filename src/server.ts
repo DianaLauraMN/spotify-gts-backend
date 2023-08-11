@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { appRouter } from './src/routes/appRoutes';
+import { appRouter } from './routes/appRoutes';
 //import session from 'express-session';
 
 const app = express();

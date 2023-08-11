@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start:dev": "nodemon --exec npx ts-node server.ts",
-    "start": "nodemon --exec npx ts-node ./src/server2.ts"
+    "start:dev": "nodemon --exec npx ts-node ./src/server.ts"
   },
   "keywords": [],
   "author": "",

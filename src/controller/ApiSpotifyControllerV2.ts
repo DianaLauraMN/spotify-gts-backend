@@ -1,6 +1,8 @@
 import { Request, Response, json } from "express";
-import axios from "axios";
+import axios, { all } from "axios";
 import { ApiControllerInterface } from "../interfaces/ApiController.interface";
+import { ParamsDictionary } from "express-serve-static-core";
+import { ParsedQs } from "qs";
 
 const clientId = '34a5174f68d8473ebb3a54a85d0b5d8f'; // Reemplaza con tu client ID de Spotify
 const clientSecret = '8149dd56104c4123a59401f51c8c2340'; // Reemplaza con tu client secret de Spotify
@@ -12,7 +14,7 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
 
     async getAuthentication(req: Request, res: Response) {
         try {
-            const scopes = ['user-read-private', 'user-read-email', 'user-top-read', 'playlist-read-collaborative']; // Define los alcances de permisos que necesitas
+            const scopes = ['user-read-private', 'user-read-email', 'user-top-read', 'playlist-read-collaborative', 'playlist-read-private', 'user-library-read']; // Define los alcances de permisos que necesitas
             const authorizeUrl =
                 'https://accounts.spotify.com/authorize?' +
                 new URLSearchParams({
@@ -85,7 +87,7 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
                     Authorization: `Bearer ${ACCESS_TOKEN}`
                 }
             });
-            const artist = transformItem('artist', artistResponse.data);
+            const artist = transformSingleItem('artist', artistResponse.data);
             res.json(artist);
         } catch (error) {
             console.log("Error while getting Artist by Id");
@@ -101,7 +103,7 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
                     Authorization: `Bearer ${ACCESS_TOKEN}`
                 }
             });
-            const track = transformItem('track', trackResponse.data);
+            const track = transformSingleItem('track', trackResponse.data);
             res.json(track);
         } catch (error) {
             console.log("Error while getting Track by Id");
@@ -133,30 +135,90 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
 
     async getUserTopTracks(req: Request, res: Response) {
         try {
-            const topTracksResponse = await axios.get(`https://api.spotify.com/v1/me/top/tracks?time_range=medium_term&limit=50&offset=0`, {
-                headers: {
-                    Authorization: `Bearer ${ACCESS_TOKEN}`
-                }
-            });
-            const tracks = await mapData('track', topTracksResponse.data.items);
-            res.json(tracks);
+            const topTracks = await loadTopTracks();
+            const topTracksMapped = await mapData('track', topTracks);
+            res.json(topTracksMapped);
         } catch (error) {
-            console.log("Error while getting Top User Tracks: ");
+            console.log("Error while getting Top User Tracks");
             console.log(error);
         }
     }
 
     async getUserTopArtists(req: Request, res: Response) {
         try {
-            const topArtistsResponse = await axios.get(`https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=50&offset=0`, {
-                headers: {
-                    Authorization: `Bearer ${ACCESS_TOKEN}`
-                }
-            });
-            const topArtists = await mapData('artist', topArtistsResponse.data.items);
-            res.json(topArtists);
+            const topArtists = await loadTopArtists();
+            const topArtistsMapped = await mapData('artist', topArtists);
+            res.json(topArtistsMapped);
         } catch (error) {
             console.log('Error while getting Top Playlists of current user');
+            console.log(error);
+        }
+    }
+
+    async getUserPlaylists(req: Request, res: Response) {
+        try {
+            const playlistsResponse = await axios.get('https://api.spotify.com/v1/me/playlists', {
+                headers: {
+                    Authorization: `Bearer ${ACCESS_TOKEN}`
+                },
+                params: {
+                    limit: 50,
+                    offset: 0,
+                }
+            });
+
+            const playlists = playlistsResponse.data.items.map((playlist: { tracks: { href: any } }) => {
+                return {
+                    tracks: playlist.tracks.href,
+                };
+            });
+
+            const allTracks = await getPlaylistsTracks();
+            const allTracksMapped = await mapData('track', allTracks);
+
+            res.json(allTracksMapped);
+            //const allPlaylistsTracks = [...artistRecommendationsMapped, ...genresRecommendationsMapped, ...tracksRecommendationsMapped];
+        } catch (error) {
+            console.log('Error while getting current user playlists (owned and followed)');
+            console.log(error);
+        }
+    }
+
+    async getUserSavedTracks(req: Request, res: Response) {
+        try {
+            const savedTracksResponse = await axios.get('https://api.spotify.com/v1/me/tracks', {
+                headers: {
+                    Authorization: `Bearer ${ACCESS_TOKEN}`
+                },
+                params: {
+                    market: 'ES',
+                    limit: 50,
+                    offset: 0,
+                }
+            });
+
+            const savedTracks = savedTracksResponse.data.items.map((item: {
+                track: {
+                    id: string; name: string; artists: any; album: any; duration_ms: any;
+                    external_urls: { spotify: any }; popularity: any; preview_url: any, type: any
+                };
+            }) => {
+                return {
+                    id: item.track.id,
+                    name: item.track.name,
+                    artists: item.track.artists,
+                    album: item.track.album,
+                    duration_ms: item.track.duration_ms,
+                    external_urls: item.track.external_urls.spotify,
+                    popularity: item.track.popularity,
+                    preview_url: item.track.preview_url,
+                    type: item.track.type,
+                };
+            });
+
+            res.json(savedTracks);
+        } catch (error) {
+            console.log('Error while getting user saved Tracks');
             console.log(error);
         }
     }
@@ -166,7 +228,7 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
         try {
             const artists = await getGenericItem('artist', itemName);
             const artistRequired = artists.find((artist: { id: string; name: string; }) => artist.name.toLowerCase() === itemName.toLowerCase());
-            const topTracksResponse = await axios.get<any>(`https://api.spotify.com/v1/artists/${artistRequired.id}/top-tracks`, {
+            const topTracksResponse = await axios.get(`https://api.spotify.com/v1/artists/${artistRequired.id}/top-tracks`, {
                 headers: {
                     Authorization: `Bearer ${ACCESS_TOKEN}`
                 },
@@ -182,37 +244,55 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
         }
     }
 
-    async getUserPlaylists(req: Request, res: Response) {
+    async getArtistAllTracks(req: Request, res: Response) {
+        const artistName = req.params.artistName;
         try {
-            const profileResponse = await axios.get('https://api.spotify.com/v1/me', {
+            const allTracksResponse = await axios.get(`https://api.spotify.com/v1/search`, {
                 headers: {
-                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                    Authorization: `Bearer ${ACCESS_TOKEN}`
                 },
-            });
-            const userId = profileResponse.data.id;
-            console.log(userId);
-
-            // Obtener las listas de reproducción del usuario y las que sigue
-            const userPlaylistsResponse = await axios.get(`https://api.spotify.com/v1/users/${userId}/playlists`, {
-                headers: {
-                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                }, params: {
+                params: {
+                    q: `artist:"${artistName}"`,
+                    type: 'track',
                     limit: 50,
                     offset: 0,
                 }
             });
-            const playlist = userPlaylistsResponse.data.items.map((playlist: { id: any; name: any; external_urls: { spotify: any; }, tracks: { href: any } }) => {
-                return {
-                    id: playlist.id,
-                    name: playlist.name,
-                    external_urls: playlist.external_urls.spotify,
-                    tracks: playlist.tracks.href,
-                };
-            });
-
-            res.json(playlist);
+            const allTracks = await mapData('track', allTracksResponse.data.tracks.items);
+            res.json(allTracks);
         } catch (error) {
-            console.log('Error while getting tracks by the user playlists');
+            console.log('Error while getting tracks by the Artists: ' + artistName);
+            console.log(error);
+        }
+    }
+
+    async getUserRecommendations(req: Request, res: Response) {
+        try { // [{},{},{}...]
+            const topArtists = await loadTopArtists(); //falta sacar de los primeros 5 sus id - arr[] de obj{}
+            const topTracks = await loadTopTracks();
+            const genresSeeds = await loadGenresSeeds();
+
+            const topFiveArtist = getSubsetArray(topArtists, 5);
+            const topFiveTracks = getSubsetArray(topTracks, 5);
+
+            const topFiveArtistsId = topFiveArtist.map(item => item.id);
+            const topFiveTracksId = topFiveTracks.map(item => item.id);
+
+            const commaSeparatedArtistsIds = topFiveArtistsId.join(',');
+            const commaSeparatedTracksIds = topFiveTracksId.join(',');
+
+            const artistRecommendations = await getItemRecommendations('artist', commaSeparatedArtistsIds, 20);
+            const genresRecommendations = await getItemRecommendations('genres', 'classical,country', 20);
+            const tracksRecommendations = await getItemRecommendations('tracks', commaSeparatedTracksIds, 20);
+
+            const artistRecommendationsMapped = await mapData('track', artistRecommendations.tracks);
+            const genresRecommendationsMapped = await mapData('track', genresRecommendations.tracks);
+            const tracksRecommendationsMapped = await mapData('track', tracksRecommendations.tracks);
+
+            const allRecommendations = [...artistRecommendationsMapped, ...genresRecommendationsMapped, ...tracksRecommendationsMapped];
+            res.json(allRecommendations);
+        } catch (error) {
+            console.log('Error while getting Spotify Recommendations for the current user');
             console.log(error);
         }
     }
@@ -279,7 +359,7 @@ async function mapData(type: string, obj: any) {
     return items;
 }
 
-function transformItem(type: string, item: any) {
+function transformSingleItem(type: string, item: any) {
     if (type === 'artist') {
         return {
             id: item.id,
@@ -303,6 +383,121 @@ function transformItem(type: string, item: any) {
             type: item.type,
         }
     }
+}
+
+async function getItemRecommendations(type: string, itemList: string, limit: number) {
+    let seedArtist = "";
+    let seedGenres = "";
+    let seedTracks = "";
+    try {
+        if (type === 'artist') {
+            seedArtist = itemList;
+        } else if (type === 'genres') {
+            seedGenres = itemList;
+        } else if (type === 'tracks') {
+            seedTracks = itemList;
+        }
+        const recommendationsResponse = await axios.get('https://api.spotify.com/v1/recommendations', {
+            headers: {
+                Authorization: `Bearer ${ACCESS_TOKEN}`
+            },
+            params: {
+                limit: limit,
+                market: 'ES',
+                seed_artists: seedArtist, //A comma separated list of Spotify IDs for seed artists : STRING, up to 5
+                seed_genres: seedGenres, //A comma separated list of any genres in the set of available genre seeds. Up to 5 seed
+                seed_tracks: seedTracks, //A comma separated list of Spotify IDs for a seed track. Up to 5
+            }
+        });
+        return recommendationsResponse.data;
+    } catch (error) {
+        console.log('Error while getting Spotify Recommendations for the current user');
+        console.log(error);
+    }
+}
+
+async function loadTopArtists() {
+    try {
+        const topArtistsResponse = await axios.get(`https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=50&offset=0`, {
+            headers: {
+                Authorization: `Bearer ${ACCESS_TOKEN}`
+            }
+        });
+        return topArtistsResponse.data.items;
+    } catch (error) {
+        console.log('Error while loading Top Playlists of current user');
+        console.log(error);
+    }
+}
+
+async function loadTopTracks() {
+    try {
+        const topTracksResponse = await axios.get(`https://api.spotify.com/v1/me/top/tracks?time_range=medium_term&limit=50&offset=0`, {
+            headers: {
+                Authorization: `Bearer ${ACCESS_TOKEN}`
+            }
+        });
+        return topTracksResponse.data.items;
+    } catch (error) {
+        console.log("Error while loading Top User Tracks");
+        console.log(error);
+    }
+}
+async function loadGenresSeeds() {
+    try {
+        const genresSeedsResponse = await axios.get(`https://api.spotify.com/v1/recommendations/available-genre-seeds`, {
+            headers: {
+                Authorization: `Bearer ${ACCESS_TOKEN}`
+            }
+        });
+        return genresSeedsResponse.data.genres;
+    } catch (error) {
+        console.log("Error while loading genres seeds");
+        console.log(error);
+    }
+}
+
+async function getPlaylistsTracks() {
+    try {
+        //param playlistsId: any[]
+        // playlistsId.forEach(async (id) => {
+        //     const playlistsResponse = await axios.get(`https://api.spotify.com/v1/playlists/21oJMC0mhLVVkWlFXb6kmr`, {
+        //         headers: {
+        //             Authorization: `Bearer ${ACCESS_TOKEN}`
+        //         }, params: {
+        //             market: 'ES',
+        //             fields: 'fields=tracks.items(track(name,href,album(name,href)))',
+        //         }
+        //     });
+        //     return playlistsResponse.data.items.track;
+        // });
+
+        const playlistsResponse = await axios.get(`https://api.spotify.com/v1/playlists/21oJMC0mhLVVkWlFXb6kmr`, {
+            headers: {
+                Authorization: `Bearer ${ACCESS_TOKEN}`
+            }, params: {
+                market: 'ES',
+                fields: 'fields=tracks.items(track(name,href,album(name,href)))',
+            }
+        });
+        const tracks = playlistsResponse.data.tracks.items.map((item: { track: any; }) => item.track);
+        return tracks;
+    } catch (error) {
+        console.log('Error while getting all tracks of the playlist');
+        console.log(error);
+    }
+}
+
+async function tryTracks() {
+    const playlistsResponse = await axios.get('https://api.spotify.com/v1/playlists/1WdepWWwC8bXowA1cM8elx/tracks', {
+        headers: {
+            Authorization: `Bearer ${ACCESS_TOKEN}`
+        }
+    });
+    return playlistsResponse;
+}
+function getSubsetArray(arr: any[], size: number): any[] {
+    return arr.slice(0, size);
 }
 
 export default ApiSpotifyControllerV2;

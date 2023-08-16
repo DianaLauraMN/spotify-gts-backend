@@ -15,11 +15,18 @@ appRouter.get('/api/search/tracks/:itemName', apiSpotifyController.getItemTracks
 appRouter.get('/api/artist/:artistId', apiSpotifyController.getArtistById);
 appRouter.get('/api/track/:trackId', apiSpotifyController.getTrackById);
 
-appRouter.get('/api/me/top/tracks', apiSpotifyController.getUserTopTracks); //Nivel Facil
-appRouter.get('/api/artist/top/track/:itemName', apiSpotifyController.getArtistTopTracks); //Nivel Facil
+appRouter.get('/api/me/favorite/tracks', apiSpotifyController.getUserSavedTracks); //TODOS LOS NIVELES
 
-appRouter.get('/api/me/top/artists', apiSpotifyController.getUserTopArtists); //Normal
-appRouter.get('/api/me/playlist', apiSpotifyController.getUserPlaylists); //Facil-normal
+appRouter.get('/api/me/top/tracks', apiSpotifyController.getUserTopTracks); //Nivel Facil
+appRouter.get('/api/artist/top/tracks/:itemName', apiSpotifyController.getArtistTopTracks); //Nivel Facil
+
+appRouter.get('/api/me/top/artists', apiSpotifyController.getUserTopArtists); //Nivel Medio 
+appRouter.get('/api/artist/tracks/:artistName', apiSpotifyController.getArtistAllTracks); //Nivel Medio
+
+appRouter.get('/api/me/playlists', apiSpotifyController.getUserPlaylists); //Normal-Dificil
+appRouter.get('/api/me/recommendations', apiSpotifyController.getUserRecommendations);//Nivel Dificil
+
+
 export { appRouter };
 
 /**

@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import axios from "axios";
+import { ApiControllerInterface } from "../interfaces/ApiController.interface";
+import { ParamsDictionary } from "express-serve-static-core";
+import { ParsedQs } from "qs";
 
 const clientId = '34a5174f68d8473ebb3a54a85d0b5d8f'; // Reemplaza con tu client ID de Spotify
 const clientSecret = '8149dd56104c4123a59401f51c8c2340'; // Reemplaza con tu client secret de Spotify
@@ -7,7 +10,13 @@ const redirectUri = 'http://localhost:3000/callback'; // Reemplaza con tu URL de
 let ACCESS_TOKEN: string;
 
 
-class ApiSpotifyController {
+class ApiSpotifyController implements ApiControllerInterface{
+    getItemArtists(req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+    getUserData(req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
 
     async getAuthentication(req: Request, res: Response) {
         try {
@@ -57,7 +66,7 @@ class ApiSpotifyController {
     }
 
 
-    async getArtistTracksById(req: Request, res: Response) {
+    async getArtistById(req: Request, res: Response) {
         const artistId = req.params.artistId;
         try {
             const artistResponse = await axios.get(`https://api.spotify.com/v1/artists/${artistId}`, {

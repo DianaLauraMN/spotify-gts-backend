@@ -22,6 +22,7 @@ appRouter.get('/api/artist/top/tracks/:itemName', apiSpotifyController.getArtist
 
 appRouter.get('/api/me/top/artists', apiSpotifyController.getUserTopArtists); //Nivel Medio 
 appRouter.get('/api/artist/tracks/:artistName', apiSpotifyController.getArtistAllTracks); //Nivel Medio
+appRouter.get('/api/genres/tracks/:genreName', apiSpotifyController.getUserTopGenres); //Nivel Medio
 
 appRouter.get('/api/me/playlists', apiSpotifyController.getUserPlaylists); //Normal-Dificil
 appRouter.get('/api/me/recommendations', apiSpotifyController.getUserRecommendations);//Nivel Dificil

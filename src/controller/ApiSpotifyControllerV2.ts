@@ -114,7 +114,7 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
     async getItemTracks(req: Request, res: Response) {
         const itemName = req.params.itemName;
         try {
-            const tracks = await getGenericItem('track', itemName);
+            const tracks = await getGenericItem('track', itemName, 50);
             res.json(tracks);
         } catch (error) {
             console.log("Error while getting Item Tracks: " + itemName);
@@ -125,7 +125,7 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
     async getItemArtists(req: Request, res: Response) {
         const itemName = req.params.itemName;
         try {
-            const artists = await getGenericItem('artist', itemName);
+            const artists = await getGenericItem('artist', itemName, 50);
             res.json(artists);
         } catch (error) {
             console.log("Error while getting Item Artists: " + itemName);
@@ -167,17 +167,14 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
                 }
             });
 
-            const playlists = playlistsResponse.data.items.map((playlist: { tracks: { href: any } }) => {
+            const playlistsId = playlistsResponse.data.items.map((playlist: { id: any }) => {
                 return {
-                    tracks: playlist.tracks.href,
+                    id: playlist.id,
                 };
             });
-
-            const allTracks = await getPlaylistsTracks();
+            const allTracks = await getPlaylistsTracks(playlistsId);
             const allTracksMapped = await mapData('track', allTracks);
-
             res.json(allTracksMapped);
-            //const allPlaylistsTracks = [...artistRecommendationsMapped, ...genresRecommendationsMapped, ...tracksRecommendationsMapped];
         } catch (error) {
             console.log('Error while getting current user playlists (owned and followed)');
             console.log(error);
@@ -226,7 +223,7 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
     async getArtistTopTracks(req: Request, res: Response) {
         const itemName = req.params.itemName;
         try {
-            const artists = await getGenericItem('artist', itemName);
+            const artists = await getGenericItem('artist', itemName, 50);
             const artistRequired = artists.find((artist: { id: string; name: string; }) => artist.name.toLowerCase() === itemName.toLowerCase());
             const topTracksResponse = await axios.get(`https://api.spotify.com/v1/artists/${artistRequired.id}/top-tracks`, {
                 headers: {
@@ -297,9 +294,19 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
         }
     }
 
+    async getUserTopGenres(req: Request, res: Response) {
+        const genreName = req.params.genreName;
+        try {
+            const genres = await getGenericItem('playlist', genreName, 2);
+            res.json(genres);
+        } catch (error) {
+            console.log('Error while getting user top genres');
+            console.log(error);
+        }
+    }
 }
 
-async function getGenericItem(type: string, itemName: string) {
+async function getGenericItem(type: string, itemName: string, limit: number) {
     let itemsMapped: any[''];
     try {
         const itemResponse = await axios.get(`https://api.spotify.com/v1/search`, {
@@ -310,16 +317,26 @@ async function getGenericItem(type: string, itemName: string) {
                 q: itemName,
                 type: type,
                 market: 'ES',
-                limit: 50,
+                limit: limit,
                 offset: 0,
             }
         });
-        if (type === 'artist') {
-            itemsMapped = await mapData(type, itemResponse.data.artists.items);
-        } else if (type === 'track') {
-            itemsMapped = await mapData(type, itemResponse.data.tracks.items);
+        if (itemResponse && itemResponse.data) {
+            if (type === 'artist') {
+                itemsMapped = await mapData(type, itemResponse.data.artists.items);
+            } else if (type === 'track') {
+                itemsMapped = await mapData(type, itemResponse.data.tracks.items);
+            } else if (type === 'playlist') {
+                //itemsMapped = itemResponse.data.playlists.items.map((item: { id: any }) => item.id);
+                const playlistsId = itemResponse.data.playlists.items.map((playlist: { id: any }) => {
+                    return { id: playlist.id };
+                });
+                const genreTracks = await getPlaylistsTracks(playlistsId);
+                if (genreTracks) itemsMapped = await mapData('track', genreTracks);
+            }
+            return itemsMapped;
         }
-        return itemsMapped;
+
     } catch (error) {
         console.log(`Error while getting ${type} for ${itemName}: ` + itemName);
         console.log(error);
@@ -443,6 +460,7 @@ async function loadTopTracks() {
         console.log(error);
     }
 }
+
 async function loadGenresSeeds() {
     try {
         const genresSeedsResponse = await axios.get(`https://api.spotify.com/v1/recommendations/available-genre-seeds`, {
@@ -457,45 +475,31 @@ async function loadGenresSeeds() {
     }
 }
 
-async function getPlaylistsTracks() {
+async function getPlaylistsTracks(playlistsId: any[]) {
     try {
-        //param playlistsId: any[]
-        // playlistsId.forEach(async (id) => {
-        //     const playlistsResponse = await axios.get(`https://api.spotify.com/v1/playlists/21oJMC0mhLVVkWlFXb6kmr`, {
-        //         headers: {
-        //             Authorization: `Bearer ${ACCESS_TOKEN}`
-        //         }, params: {
-        //             market: 'ES',
-        //             fields: 'fields=tracks.items(track(name,href,album(name,href)))',
-        //         }
-        //     });
-        //     return playlistsResponse.data.items.track;
-        // });
-
-        const playlistsResponse = await axios.get(`https://api.spotify.com/v1/playlists/21oJMC0mhLVVkWlFXb6kmr`, {
-            headers: {
-                Authorization: `Bearer ${ACCESS_TOKEN}`
-            }, params: {
-                market: 'ES',
-                fields: 'fields=tracks.items(track(name,href,album(name,href)))',
-            }
+        const allTracks: any[] = [];
+        const promises = playlistsId.map(async (playlistIterador) => {
+            const id = playlistIterador.id;
+            const playlistsResponse = await axios.get(`https://api.spotify.com/v1/playlists/${id}`, {
+                headers: {
+                    Authorization: `Bearer ${ACCESS_TOKEN}`
+                }, params: {
+                    market: 'ES',
+                    fields: 'fields=tracks.items(track(name,href,album(name,href)))',
+                }
+            });
+            const tracks = playlistsResponse.data.tracks.items.map((item: { track: any }) => item.track);
+            allTracks.push(...tracks);
         });
-        const tracks = playlistsResponse.data.tracks.items.map((item: { track: any; }) => item.track);
-        return tracks;
+        await Promise.all(promises);
+        return allTracks;
     } catch (error) {
         console.log('Error while getting all tracks of the playlist');
         console.log(error);
+        throw error;
     }
 }
 
-async function tryTracks() {
-    const playlistsResponse = await axios.get('https://api.spotify.com/v1/playlists/1WdepWWwC8bXowA1cM8elx/tracks', {
-        headers: {
-            Authorization: `Bearer ${ACCESS_TOKEN}`
-        }
-    });
-    return playlistsResponse;
-}
 function getSubsetArray(arr: any[], size: number): any[] {
     return arr.slice(0, size);
 }

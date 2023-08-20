@@ -9,8 +9,8 @@ const apiSpotifyController: ApiControllerInterface = new ApiSpotifyControllerV2(
 appRouter.get('/callback', apiSpotifyController.getCallback);
 appRouter.get('/api/login', apiSpotifyController.getAuthentication);
 appRouter.get('/api/me', apiSpotifyController.getUserData);
-appRouter.get('/api/search/artists/:itemName', apiSpotifyController.getItemArtists);//buscador de artistas
-appRouter.get('/api/search/tracks/:itemName', apiSpotifyController.getItemTracks);//buscador de tracks
+appRouter.get('/api/search/artists/:itemName', apiSpotifyController.getArtistsByName);//buscador de artistas
+appRouter.get('/api/search/tracks/:itemName', apiSpotifyController.getTracksByName);//buscador de tracks
 
 appRouter.get('/api/artist/:artistId', apiSpotifyController.getArtistById);
 appRouter.get('/api/track/:trackId', apiSpotifyController.getTrackById);

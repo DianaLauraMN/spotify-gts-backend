@@ -11,7 +11,7 @@ let ACCESS_TOKEN: string;
 
 
 class ApiSpotifyController implements ApiControllerInterface{
-    getItemArtists(req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>): Promise<void> {
+    getArtistsByName(req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>): Promise<void> {
         throw new Error("Method not implemented.");
     }
     getUserData(req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>): Promise<void> {

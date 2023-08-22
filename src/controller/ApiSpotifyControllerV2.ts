@@ -264,10 +264,10 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
             const tracksRecommendationsList = await getItemRecommendations('tracks', commaSeparatedTracksIds, 20, superToken);
 
             const artistRecommendations = getTracksListsTyped(artistRecommendationsList.tracks);
-            //const genresRecommendations = getTracksListsTyped(genresRecommendationsList.tracks);
+            const genresRecommendations = getTracksListsTyped(genresRecommendationsList.tracks);
             const tracksRecommendations = getTracksListsTyped(tracksRecommendationsList.tracks);
 
-            const allRecommendations = [...artistRecommendations, ...tracksRecommendations]; //...genresRecommendationsMapped incluir cuando obtenga los generos mas escuchados del usuario
+            const allRecommendations = [...artistRecommendations, ...tracksRecommendations, ...genresRecommendations];
             res.json(allRecommendations);
         } catch (error) {
             console.log('Error while getting Spotify Recommendations for the current user');

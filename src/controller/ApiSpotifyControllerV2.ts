@@ -7,6 +7,8 @@ import Track from "../entities/track/Track";
 import TrackAdapter from "../entities/track/TrackAdapter";
 import Artist from "../entities/artist/Artist";
 import ArtistAdapter from "../entities/artist/ArtistAdapter";
+import { ParamsDictionary } from "express-serve-static-core";
+import { ParsedQs } from "qs";
 
 const clientId = '34a5174f68d8473ebb3a54a85d0b5d8f'; // Reemplaza con tu client ID de Spotify
 const clientSecret = '8149dd56104c4123a59401f51c8c2340'; // Reemplaza con tu client secret de Spotify
@@ -17,7 +19,7 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
 
     async getAuthentication(req: Request, res: Response) {
         try {
-            const scopes = ['user-read-private', 'user-read-email', 'user-top-read', 'playlist-read-collaborative', 'playlist-read-private', 'user-library-read']; // Define los alcances de permisos que necesitas
+            const scopes = ['user-read-private', 'user-read-email', 'user-top-read', 'playlist-read-collaborative', 'playlist-read-private', 'user-library-read', 'user-follow-read'];
             const authorizeUrl =
                 'https://accounts.spotify.com/authorize?' +
                 new URLSearchParams({
@@ -59,14 +61,13 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
     }
 
     async getUserData(req: Request, res: Response) {
+        const superToken = req.headers.authorization;
         try {
-            const superToken = req.headers.authorization;
             const profileResponse = await axios.get('https://api.spotify.com/v1/me', {
                 headers: { 'Authorization': superToken },
             });
-
-            const userItem: User = UserAdapter.adaptUser(profileResponse.data);
-            res.json(userItem);
+            const user: User = UserAdapter.adaptUser(profileResponse.data);
+            res.json(user);
         } catch (error) {
             console.error('Error while getting current user information');
             console.error(error);
@@ -74,14 +75,14 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
     }
 
     async getArtistById(req: Request, res: Response) {
+        const superToken = req.headers.authorization;
+        const artistId = req.params.artistId;
         try {
-            const superToken = req.headers.authorization;
-            const artistId = req.params.artistId;
             const artistResponse = await axios.get(`https://api.spotify.com/v1/artists/${artistId}`, {
                 headers: { 'Authorization': superToken }
             });
-            const artistItem: Artist = ArtistAdapter.adaptArtist(artistResponse.data);
-            res.json(artistItem);
+            const artist: Artist = ArtistAdapter.adaptArtist(artistResponse.data);
+            res.json(artist);
         } catch (error) {
             console.log("Error while getting Artist by Id");
             console.log(error);
@@ -90,13 +91,13 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
 
     async getTrackById(req: Request, res: Response) {
         const trackId = req.params.trackId;
+        const superToken = req.headers.authorization;
         try {
-            const superToken = req.headers.authorization;
             const trackResponse = await axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
                 headers: { 'Authorization': superToken }
             });
-            const trackItem: Track = TrackAdapter.adaptTrack(trackResponse.data);
-            res.json(trackItem);
+            const track: Track = TrackAdapter.adaptTrack(trackResponse.data);
+            res.json(track);
         } catch (error) {
             console.log("Error while getting Track by Id");
             console.log(error);
@@ -108,10 +109,10 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
         const itemName = req.params.itemName;
         try {
             if (!superToken) throw console.error('Error, token expected');
-            const tracks = await getItemByType('track', itemName, 50, superToken);
+            const tracks = await getTypedItemByType('track', itemName, 50, superToken);
             res.json(tracks);
         } catch (error) {
-            console.log("Error while getting Item Tracks");
+            console.log("Error while getting Tracks by its name");
             console.log(error);
         }
     }
@@ -121,10 +122,10 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
         const itemName = req.params.itemName;
         try {
             if (!superToken) throw console.error('Error, token expected');
-            const artists = await getItemByType('artist', itemName, 50, superToken);
+            const artists = await getTypedItemByType('artist', itemName, 50, superToken);
             res.json(artists);
         } catch (error) {
-            console.log("Error while getting Item Artists");
+            console.log("Error while getting Artists by its name");
             console.log(error);
         }
     }
@@ -133,11 +134,11 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
         const superToken = req.headers.authorization;
         try {
             if (!superToken) throw console.error('Error, token expected');
-            const topTracks = await loadTopTracks(superToken);
-            const topTracksTyped = typeTracksLists(topTracks);
-            res.json(topTracksTyped);
+            const topTracksList = await loadTopTracks(superToken);
+            const topTracks = getTracksListsTyped(topTracksList);
+            res.json(topTracks);
         } catch (error) {
-            console.log("Error while getting Top User Tracks");
+            console.log("Error while getting User Top Tracks");
             console.log(error);
         }
     }
@@ -146,16 +147,16 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
         const superToken = req.headers.authorization;
         try {
             if (!superToken) throw console.error('Error, token expected');
-            const topArtists = await loadTopArtists(superToken);
-            const topArtistsTyped = typeArtistsLists(topArtists);
-            res.json(topArtistsTyped);
+            const topArtistsList = await loadTopArtists(50, superToken);
+            const topArtists = getArtistsListTyped(topArtistsList);
+            res.json(topArtists);
         } catch (error) {
-            console.log('Error while getting Top Playlists of current user');
+            console.log('Error while getting User Top Playlists');
             console.log(error);
         }
     }
 
-    async getUserPlaylists(req: Request, res: Response) {
+    async getUserPlaylistsTracks(req: Request, res: Response) {
         const superToken = req.headers.authorization;
         try {
             if (!superToken) throw console.error('Error, token expected');
@@ -166,15 +167,9 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
                     offset: 0,
                 }
             });
-
-            const playlistsId = playlistsResponse.data.items.map((playlist: { id: any }) => {
-                return {
-                    id: playlist.id,
-                };
-            });
-            const allTracks = await getPlaylistsTracks(playlistsId, superToken);
-            const allTracksMapped = typeTracksLists(allTracks);
-            res.json(allTracksMapped);
+            const playlistsId = playlistsResponse.data.items.map((playlist: { id: any }) => playlist.id);
+            const allPlaylistsTracks = await getPlaylistsTracksTyped(playlistsId, superToken);
+            res.json(allPlaylistsTracks);
         } catch (error) {
             console.log('Error while getting current user playlists (owned and followed)');
             console.log(error);
@@ -194,9 +189,9 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
                 }
             });
 
-            const trackObjects = savedTracksResponse.data.items.map((item: { track: any; }) => item.track);
-            const savedTracksTyped = typeTracksLists(trackObjects);
-            res.json(savedTracksTyped);
+            const tracksList = savedTracksResponse.data.items.map((item: { track: any; }) => item.track);
+            const savedTracks = getTracksListsTyped(tracksList);
+            res.json(savedTracks);
         } catch (error) {
             console.log('Error while getting user saved Tracks');
             console.log(error);
@@ -208,28 +203,27 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
         const itemName = req.params.itemName;
         try {
             if (!superToken) throw console.error('Error, token expected');
-            const artists = await getItemByType('artist', itemName, 50, superToken);
+            const artists = await getTypedItemByType('artist', itemName, 50, superToken);
             const artistRequired = artists.find((artist: { id: string; name: string; }) => artist.name.toLowerCase() === itemName.toLowerCase());
-
-            const topTracksResponse = await axios.get(`https://api.spotify.com/v1/artists/${artistRequired.id}/top-tracks`, {
+            const artistTopTracksResponse = await axios.get(`https://api.spotify.com/v1/artists/${artistRequired.id}/top-tracks`, {
                 headers: { 'Authorization': superToken },
                 params: {
                     market: 'ES',
                 }
             });
-            const tracks = await mapData('track', topTracksResponse.data.tracks);
-            res.json(tracks);
+            const artistTopTracks = getTracksListsTyped(artistTopTracksResponse.data.tracks);
+            res.json(artistTopTracks);
         } catch (error) {
             console.log('Error while getting tracks by the Artists: ' + itemName);
             console.log(error);
         }
     }
 
-    async getArtistAllTracks(req: Request, res: Response) {
+    async getAllArtistTracks(req: Request, res: Response) {
+        const superToken = req.headers.authorization;
         const artistName = req.params.artistName;
         try {
-            const superToken = req.headers.authorization;
-            const allTracksResponse = await axios.get(`https://api.spotify.com/v1/search`, {
+            const allArtistTracksResponse = await axios.get(`https://api.spotify.com/v1/search`, {
                 headers: { 'Authorization': superToken },
                 params: {
                     q: `artist:"${artistName}"`,
@@ -238,8 +232,8 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
                     offset: 0,
                 }
             });
-            const allTracks = typeTracksLists(allTracksResponse.data.tracks.items);
-            res.json(allTracks);
+            const allArtistTracks = getTracksListsTyped(allArtistTracksResponse.data.tracks.items);
+            res.json(allArtistTracks);
         } catch (error) {
             console.log('Error while getting tracks by the Artists: ' + artistName);
             console.log(error);
@@ -250,27 +244,30 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
         const superToken = req.headers.authorization;
         try {
             if (!superToken) throw console.error('Error, token expected');
-            const topArtists = await loadTopArtists(superToken);
-            const topTracks = await loadTopTracks(superToken);        
+            const topArtists = await loadTopArtists(10, superToken);
+            const topTracks = await loadTopTracks(superToken);
+            const topGenres = await getUserTopGenresSeeds(topArtists, superToken);
 
             const topFiveArtist = getSubsetArray(topArtists, 5);
             const topFiveTracks = getSubsetArray(topTracks, 5);
+            const topFiveGenres = getSubsetArray(topGenres, 5);
 
             const topFiveArtistsId = topFiveArtist.map(item => item.id);
             const topFiveTracksId = topFiveTracks.map(item => item.id);
 
             const commaSeparatedArtistsIds = topFiveArtistsId.join(',');
             const commaSeparatedTracksIds = topFiveTracksId.join(',');
+            const commaSeparatedGenresIds = topFiveGenres.join(',');
 
-            const artistRecommendations = await getItemRecommendations('artist', commaSeparatedArtistsIds, 20, superToken);
-            //const genresRecommendations = await getItemRecommendations('genres', 'anime', 20, superToken);
-            const tracksRecommendations = await getItemRecommendations('tracks', commaSeparatedTracksIds, 20, superToken);
+            const artistRecommendationsList = await getItemRecommendations('artist', commaSeparatedArtistsIds, 20, superToken);
+            const genresRecommendationsList = await getItemRecommendations('genres', commaSeparatedGenresIds, 20, superToken);
+            const tracksRecommendationsList = await getItemRecommendations('tracks', commaSeparatedTracksIds, 20, superToken);
 
-            const artistRecommendationsMapped = typeTracksLists(artistRecommendations.tracks);
-            //const genresRecommendationsMapped = typeTracksLists(genresRecommendations.tracks);
-            const tracksRecommendationsMapped = typeTracksLists(tracksRecommendations.tracks);
+            const artistRecommendations = getTracksListsTyped(artistRecommendationsList.tracks);
+            const genresRecommendations = getTracksListsTyped(genresRecommendationsList.tracks);
+            const tracksRecommendations = getTracksListsTyped(tracksRecommendationsList.tracks);
 
-            const allRecommendations = [...artistRecommendationsMapped, ...tracksRecommendationsMapped]; //...genresRecommendationsMapped incluir cuando obtenga los generos mas escuchados del usuario
+            const allRecommendations = [...artistRecommendations, ...tracksRecommendations, ...genresRecommendations];
             res.json(allRecommendations);
         } catch (error) {
             console.log('Error while getting Spotify Recommendations for the current user');
@@ -278,22 +275,59 @@ class ApiSpotifyControllerV2 implements ApiControllerInterface {
         }
     }
 
-    async getUserTopGenres(req: Request, res: Response) {
+    async getTracksByGenre(req: Request, res: Response) {
         const superToken = req.headers.authorization;
         const genreName = req.params.genreName;
         try {
             if (!superToken) throw console.error('Error, token expected');
-            const genres = await getItemByType('playlist', genreName, 2, superToken);
+            const genres = await getTypedItemByType('playlist', genreName, 2, superToken);
             res.json(genres);
+        } catch (error) {
+            console.log('Error while getting tracks by genre');
+            console.log(error);
+        }
+    }
 
+
+    async getUserTopGenres(req: Request, res: Response): Promise<void> {
+        const superToken = req.headers.authorization;
+        try {
+            if (!superToken) throw console.error('Error, token expected');
+            const topArtistsList = await loadTopArtists(10, superToken);
+            const topArtists = getArtistsListTyped(topArtistsList);
+            const sortedTopUserGenres = await getUserTopGenresSeeds(topArtists, superToken);
+            res.json(sortedTopUserGenres);
         } catch (error) {
             console.log('Error while getting user top genres');
             console.log(error);
         }
     }
+
 }
 
-async function getItemByType(type: string, itemName: string, limit: number, superToken: string) {
+async function getUserTopGenresSeeds(topArtists: any[], superToken: string) {
+    const artistsGenresLists = topArtists.map(artist => artist.genres); // top user generos con repeticiones
+    const artistsGenresList = artistsGenresLists.flatMap(arr => arr); //combina todos los generos de dif arreglos en un solo arreglo de generos
+    const sortedTopUserGenres = await sortUserTopGenresSeeds(artistsGenresList, superToken);
+    return sortedTopUserGenres;
+}
+
+async function sortUserTopGenresSeeds(genresList: any[], superToken: string) {
+    const genreCounts: Record<string, number> = {};
+    const genresLoaded = await loadAllGenres(superToken);
+
+    genresList.forEach((genre) => {
+        genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+    });
+
+    //GENEROS QUE AUN NO ENTRAN EN SEEDS Y SON TOP GENEROS DEL USUARIO
+    const allUserGenresSorted = Object.keys(genreCounts).sort((a, b) => genreCounts[b] - genreCounts[a]);
+    //GENEROS SEEDS (GENEROS PERMITIDOS DE SPOTIFY) ORDENADOS DE MAS ESCUCHADOS A MENOS ESCUCHADOS POR EL USUARIO
+    const seedsGenresSorted = allUserGenresSorted.filter((genre: string) => genresLoaded.includes(genre));
+    return seedsGenresSorted;
+}
+
+async function getTypedItemByType(type: string, itemName: string, limit: number, superToken: string) {
     let itemsMapped: any[''];
     try {
         const itemResponse = await axios.get(`https://api.spotify.com/v1/search`, {
@@ -308,66 +342,26 @@ async function getItemByType(type: string, itemName: string, limit: number, supe
         });
         if (itemResponse && itemResponse.data) {
             if (type === 'artist') {
-                //itemsMapped = await mapData(type, itemResponse.data.artists.items);
-                itemsMapped = typeArtistsLists(itemResponse.data.artists.items);
+                itemsMapped = getArtistsListTyped(itemResponse.data.artists.items);
             } else if (type === 'track') {
-                //itemsMapped = await mapData(type, itemResponse.data.tracks.items);
-                itemsMapped = typeTracksLists(itemResponse.data.tracks.items);
+                itemsMapped = getTracksListsTyped(itemResponse.data.tracks.items);
             } else if (type === 'playlist') {
-                //itemsMapped = itemResponse.data.playlists.items.map((item: { id: any }) => item.id);
-                const playlistsId = itemResponse.data.playlists.items.map((playlist: { id: any }) => {
-                    return { id: playlist.id };
-                });
-                const genreTracks = await getPlaylistsTracks(playlistsId, superToken);
-                if (genreTracks) itemsMapped = await mapData('track', genreTracks);
+                const playlistsId = itemResponse.data.playlists.items.map((playlist: { id: any }) => playlist.id);
+                itemsMapped = await getPlaylistsTracksTyped(playlistsId, superToken);
             }
             return itemsMapped;
         }
-
     } catch (error) {
         console.log(`Error while getting ${type} for ${itemName}: ` + itemName);
         console.log(error);
     }
 }
 
-async function mapData(type: string, items: any) {
-    let itemsMapped: any;
-    if (type === 'artist') {
-        itemsMapped = items.map((artist: { id: any; name: any; external_urls: { spotify: any; }; images: any; popularity: any; type: any; genres: any; }) => {
-            return {
-                id: artist.id,
-                name: artist.name,
-                external_urls: artist.external_urls.spotify,
-                images: artist.images,
-                popularity: artist.popularity,
-                type: artist.type,
-                genres: artist.genres,
-            };
-        });
-    } else if (type === 'track') {
-        itemsMapped = items.map((item: { id: any; name: any; artists: any; album: any; duration_ms: any; external_urls: { spotify: any; }; popularity: any; preview_url: any; type: any; }) => {
-            return {
-                id: item.id,
-                name: item.name,
-                artists: item.artists,
-                album: item.album,
-                duration_ms: item.duration_ms,
-                external_urls: item.external_urls.spotify,
-                popularity: item.popularity,
-                preview_url: item.preview_url,
-                type: item.type,
-            };
-        });
-    }
-
-    return itemsMapped;
-}
-
-function typeArtistsLists(items: any[]): Artist[] {
+function getArtistsListTyped(items: any[]): Artist[] {
     const typedArtists: Artist[] = items.map(item => ArtistAdapter.adaptArtist(item));
     return typedArtists;
 }
-function typeTracksLists(items: any[]): Track[] {
+function getTracksListsTyped(items: any[]): Track[] {
     const typedTracks: Track[] = items.map(item => TrackAdapter.adaptTrack(item));
     return typedTracks;
 }
@@ -389,9 +383,9 @@ async function getItemRecommendations(type: string, itemList: string, limit: num
             params: {
                 limit: limit,
                 market: 'ES',
-                seed_artists: seedArtist, //A comma separated list of Spotify IDs for seed artists : STRING, up to 5
-                seed_genres: seedGenres, //A comma separated list of any genres in the set of available genre seeds. Up to 5 seed
-                seed_tracks: seedTracks, //A comma separated list of Spotify IDs for a seed track. Up to 5
+                seed_artists: seedArtist,
+                seed_genres: seedGenres,
+                seed_tracks: seedTracks,
             }
         });
         return recommendationsResponse.data;
@@ -401,14 +395,14 @@ async function getItemRecommendations(type: string, itemList: string, limit: num
     }
 }
 
-async function loadTopArtists(superToken: string) {
+async function loadTopArtists(limit: number, superToken: string) {
     try {
-        const topArtistsResponse = await axios.get(`https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=50&offset=0`, {
+        const topArtistsResponse = await axios.get(`https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=${limit}&offset=0`, {
             headers: { 'Authorization': superToken }
         });
         return topArtistsResponse.data.items;
     } catch (error) {
-        console.log('Error while loading Top Playlists of current user');
+        console.log('Error while loading Top Artist of current user');
         console.log(error);
     }
 }
@@ -426,7 +420,6 @@ async function loadTopTracks(superToken: string) {
 }
 
 async function loadAllGenres(superToken: string) {
-      // const genresLoaded = await loadAllGenres(superToken); //usar este metodo con esto
     try {
         const genresSeedsResponse = await axios.get(`https://api.spotify.com/v1/recommendations/available-genre-seeds`, {
             headers: { 'Authorization': superToken }
@@ -438,11 +431,11 @@ async function loadAllGenres(superToken: string) {
     }
 }
 
-async function getPlaylistsTracks(playlistsId: any[], superToken: string) {
+async function getPlaylistsTracksTyped(playlistsId: any[], superToken: string) {
     try {
         const allTracks: any[] = [];
         const promises = playlistsId.map(async (playlistIterador) => {
-            const id = playlistIterador.id;
+            const id = playlistIterador;
             const playlistsResponse = await axios.get(`https://api.spotify.com/v1/playlists/${id}`, {
                 headers: { 'Authorization': superToken }, params: {
                     market: 'ES',
@@ -453,7 +446,8 @@ async function getPlaylistsTracks(playlistsId: any[], superToken: string) {
             allTracks.push(...tracks);
         });
         await Promise.all(promises);
-        return allTracks;
+        const allTracksTyped = getTracksListsTyped(allTracks);
+        return allTracksTyped;
     } catch (error) {
         console.log('Error while getting all tracks of the playlist');
         console.log(error);
@@ -462,7 +456,7 @@ async function getPlaylistsTracks(playlistsId: any[], superToken: string) {
 }
 
 function getSubsetArray(arr: any[], size: number): any[] {
-    return arr.slice(0, size);
+    return arr.length >= size ? arr.slice(0, size) : arr;
 }
 
 export default ApiSpotifyControllerV2;

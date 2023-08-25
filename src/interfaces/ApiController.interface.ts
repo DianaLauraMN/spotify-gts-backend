@@ -13,7 +13,7 @@ export interface ApiControllerInterface {
     getTracksByName(req: Request, res: Response): Promise<void>;
     getUserTopTracks(req: Request, res: Response): Promise<void>;
     getArtistTopTracks(req: Request, res: Response): Promise<void>;
-    getAllArtistTracks(req: Request, res: Response): Promise<void>;
+    getArtistAllTracks(req: Request, res: Response): Promise<void>;
     getUserTopArtists(req: Request, res: Response): Promise<void>;
     getUserPlaylistsTracks(req: Request, res: Response): Promise<void>;
     getUserSavedTracks(req: Request, res: Response): Promise<void>;

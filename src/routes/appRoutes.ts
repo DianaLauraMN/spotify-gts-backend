@@ -1,10 +1,9 @@
 import { Router, Request, Response } from "express";
-import ApiSpotifyController from "./../controller/ApiSpotifyController";
 import { ApiControllerInterface } from "../interfaces/ApiController.interface";
-import ApiSpotifyControllerV2 from "../controller/ApiSpotifyControllerV2";
+import ApiSpotifyController from "../controller/ApiSpotifyController";
 
 const appRouter = Router();
-const apiSpotifyController: ApiControllerInterface = new ApiSpotifyControllerV2();
+const apiSpotifyController: ApiControllerInterface = new ApiSpotifyController();
 
 appRouter.get('/callback', apiSpotifyController.getCallback);
 appRouter.get('/api/login', apiSpotifyController.getAuthentication);
@@ -21,7 +20,7 @@ appRouter.get('/api/me/top/tracks', apiSpotifyController.getUserTopTracks); //Ni
 appRouter.get('/api/artist/top/tracks/:itemName', apiSpotifyController.getArtistTopTracks); //Nivel Facil
 
 appRouter.get('/api/me/top/artists', apiSpotifyController.getUserTopArtists); //Nivel Medio 
-appRouter.get('/api/artist/tracks/:artistName', apiSpotifyController.getAllArtistTracks); //Nivel Medio
+appRouter.get('/api/artist/tracks/:artistName', apiSpotifyController.getArtistAllTracks); //Nivel Medio
 appRouter.get('/api/genres/tracks/:genreName', apiSpotifyController.getTracksByGenre); //Nivel Medio
 appRouter.get('/api/me/top/genres', apiSpotifyController.getUserTopGenres); //Nivel Medio
 

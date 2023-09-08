@@ -1,52 +1,43 @@
-import { Router, Request, Response } from "express";
-import { ApiControllerInterface } from "../interfaces/ApiController.interface";
-import ApiSpotifyController from "../controller/ApiSpotifyController";
+import { Router } from "express";
+import ApiAuthController from "../controller/api/ApiSpotifyAuthController";
+import { ApiAuthInterface } from "../interfaces/ApiAuth.interface";
+import ApiTracksController from "../controller/api/ApiSpotifyTracksController";
+import { ApiTracksInterface } from "../interfaces/ApiTracks.interface";
+import ApiArtistsController from "../controller/api/ApiSpotifyArtistsController";
+import { ApiArtistsInterface } from "../interfaces/ApiArtists.interface";
+import ApiUserController from "../controller/api/ApiSpotifyUserController";
+import { ApiUserInterface } from "../interfaces/ApiUser.interface";
+import LevelsLogic from "../controller/levelsLogic/LevelsLogic";
 
 const appRouter = Router();
-const apiSpotifyController: ApiControllerInterface = new ApiSpotifyController();
+const apiAuthController: ApiAuthInterface = new ApiAuthController();
+const apiUserController: ApiUserInterface = new ApiUserController();
+const apiArtistsController: ApiArtistsInterface = new ApiArtistsController();
+const apiTracksController: ApiTracksInterface = new ApiTracksController();
+const levelsLogic = new LevelsLogic();
 
-appRouter.get('/callback', apiSpotifyController.getCallback);
-appRouter.get('/api/login', apiSpotifyController.getAuthentication);
-appRouter.get('/api/me', apiSpotifyController.getUserData);
-appRouter.get('/api/search/artists/:itemName', apiSpotifyController.getArtistsByName);//buscador de artistas
-appRouter.get('/api/search/tracks/:itemName', apiSpotifyController.getTracksByName);//buscador de tracks
+appRouter.get('/callback', apiAuthController.getCallback);
+appRouter.get('/api/login', apiAuthController.getAuthentication);
+appRouter.get('/api/me', apiUserController.getUserData);
+appRouter.get('/api/search/artists/:itemName', apiArtistsController.getArtistsByName);//buscador de artistas
+appRouter.get('/api/search/tracks/:itemName', apiTracksController.getTracksByName);//buscador de tracks
 
-appRouter.get('/api/artist/:artistId', apiSpotifyController.getArtistById);
-appRouter.get('/api/track/:trackId', apiSpotifyController.getTrackById);
+appRouter.get('/api/artist/:artistId', apiArtistsController.getArtistById);
+appRouter.get('/api/track/:trackId', apiTracksController.getTrackById);
 
-appRouter.get('/api/me/favorite/tracks', apiSpotifyController.getUserSavedTracks); //TODOS LOS NIVELES
+appRouter.get('/api/me/favorite/tracks', apiTracksController.getUserSavedTracks); //TODOS LOS NIVELES
 
-appRouter.get('/api/me/top/tracks', apiSpotifyController.getUserTopTracks); //Nivel Facil
-appRouter.get('/api/artist/top/tracks/:itemName', apiSpotifyController.getArtistTopTracks); //Nivel Facil
+appRouter.get('/api/me/top/tracks', apiTracksController.getUserTopTracks); //Nivel Facil
+appRouter.get('/api/artist/top/tracks/:itemName', apiTracksController.getArtistTopTracks); //Nivel Facil
 
-appRouter.get('/api/me/top/artists', apiSpotifyController.getUserTopArtists); //Nivel Medio 
-appRouter.get('/api/artist/tracks/:artistName', apiSpotifyController.getArtistAllTracks); //Nivel Medio
-appRouter.get('/api/genres/tracks/:genreName', apiSpotifyController.getTracksByGenre); //Nivel Medio
-appRouter.get('/api/me/top/genres', apiSpotifyController.getUserTopGenres); //Nivel Medio
+appRouter.get('/api/me/top/artists', apiArtistsController.getUserTopArtists); //Nivel Medio 
+appRouter.get('/api/artist/tracks/:artistName', apiTracksController.getArtistAllTracks); //Nivel Medio
+appRouter.get('/api/me/top/genres/tracks', apiTracksController.getUserTopGenresTracks); //Nivel Medio
+appRouter.get('/api/me/top/genres', apiTracksController.getUserTopGenres); //Nivel Medio
 
-appRouter.get('/api/me/playlists', apiSpotifyController.getUserPlaylistsTracks); //Normal-Dificil
-appRouter.get('/api/me/recommendations', apiSpotifyController.getUserRecommendations);//Nivel Dificil
+appRouter.get('/api/me/playlists', apiTracksController.getUserPlaylistsTracks); //Normal-Dificil
+appRouter.get('/api/me/recommendations', apiTracksController.getUserRecommendations);//Nivel Dificil
 
+appRouter.post('/api/tracksByLevel', levelsLogic.getTracksByLevel);
 
 export { appRouter };
-
-/**
- * 
-nivel dificil:  primeros 3 seg, la lista de canciones a adivinar se tomara de  las canciones que el usuario a agregado a su biblioteca, o esta dentro de una lista de reproduccion suya o que el siga y las canciones mas populares de los artistas que el sigue.
-nivel medio: primeros 5 seg, la lista de canciones a adivinar se tomara de las canciones que el usuario tenga en su biblioteca, y de sus top mas escuchados.
-nivel facil: prmeros 7 seg, la lista de canciones a adivinar se tomara de un artista (o mas) en especifico seleccionado antes de iniciar la partida. 
- */
-
-
-/**
- * Artist ->getOne, getAll, getPaginate, searchBy
- * Track ->getOne, getAll, getPaginate, searchBy
- * PlayList ->getOne, getAll, getPaginate, searchBy
- * 
- */
-
-/**
- * interface IQueryGlobalDataItems -> getOneById, getAll, searchByQuery
- * 
- * const {name, date, team, song} = req.query;//Ejemplo
- */

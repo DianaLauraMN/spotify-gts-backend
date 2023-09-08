@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, urlencoded, json } from 'express';
 import cors from 'cors';
 import { appRouter } from './routes/appRoutes';
 //import session from 'express-session';
@@ -8,9 +8,15 @@ const PORT = 3000;
 
 app.use(cors({
     origin: 'http://localhost:5173',
-    optionsSuccessStatus: 200,
 }));
-
+app.use(json());
+app.use(urlencoded({ extended: true }));
+/**
+ * {
+    origin: 'http://localhost:5173',
+    optionsSuccessStatus: 200,
+}
+ */
 app.use(appRouter);
 // app.use(session({
 //   secret: 'secreto-super-seguro',

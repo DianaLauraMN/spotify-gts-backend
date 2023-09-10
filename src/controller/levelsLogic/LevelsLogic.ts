@@ -9,6 +9,8 @@ class LevelsLogic {
     }
     async getTracksByLevel(req: Request, res: Response) {
         const { configurationGame } = req.body;
+        console.log(configurationGame);
+        
         const { level } = configurationGame;
         let tracks: any[] | undefined;
         if (level === "EASY") {

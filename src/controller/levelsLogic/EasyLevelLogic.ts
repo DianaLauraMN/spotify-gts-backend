@@ -4,7 +4,7 @@ import { Request, Response } from "express";
 import Track from "../../entities/track/Track";
 import TracksRepository from "../../repositories/TracksRepository";
 import Artist from "../../entities/artist/Artist";
-import { getTypedItemByType } from "../api/ApiSpotifyTracksController";
+import { getTypedItemTracksByType } from "../../repositories/TracksRepository"; 
 
 class EasyLevelLogic implements LevelLogicInterface {
     configurationGame: ConfigurationGame;
@@ -51,7 +51,7 @@ class EasyLevelLogic implements LevelLogicInterface {
         let newPlaylist: Track[] = tracks;
         while (newPlaylist.length < tracksQuantity) {
             for (const artist of artists) {
-                const artistTopTracks = await getTypedItemByType('artist', artist.name, 5, superToken);
+                const artistTopTracks = await getTypedItemTracksByType('artist', artist.name, 5, superToken);
                 if (artistTopTracks) newPlaylist.push(...artistTopTracks);
                 newPlaylist = this.removeTracksDuplicated(newPlaylist);
             }

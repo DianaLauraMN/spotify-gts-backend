@@ -3,7 +3,6 @@ import { Request, Response } from "express";
 import Artist from "../../entities/artist/Artist";
 import ArtistAdapter from "../../entities/artist/ArtistAdapter";
 import { ApiArtistsInterface } from "../../interfaces/ApiArtists.interface";
-import { getTypedItemByType } from "./ApiSpotifyTracksController";
 
 class ApiArtistsController implements ApiArtistsInterface {
 
@@ -27,7 +26,7 @@ class ApiArtistsController implements ApiArtistsInterface {
         const itemName = req.params.itemName;
         try {
             if (!superToken) throw console.error('Error, token expected');
-            const artists = await getTypedItemByType('artist', itemName, 50, superToken);
+            const artists = await getTypedArtistsByName(itemName, 50, superToken);
             res.json(artists);
         } catch (error) {
             console.log("Error while getting Artists by its name");
@@ -67,5 +66,27 @@ export async function loadTopArtists(limit: number, superToken: string) {
     }
 }
 
+export async function getTypedArtistsByName(itemName: string, limit: number, superToken: string): Promise<Artist[] | undefined> {
+    let itemsMapped: Artist[];
+    try {
+        const itemResponse = await axios.get(`https://api.spotify.com/v1/search`, {
+            headers: { 'Authorization': superToken },
+            params: {
+                q: itemName,
+                type: 'artist',
+                market: 'ES',
+                limit: limit,
+                offset: 0,
+            }
+        });
+        if (itemResponse && itemResponse.data) {
+            itemsMapped = getArtistsListTyped(itemResponse.data.artists.items);
+            return itemsMapped;
+        }
+    } catch (error) {
+        console.log(`Error while getting artist: ` + itemName);
+        console.log(error);
+    }
+}
 
 export default ApiArtistsController;

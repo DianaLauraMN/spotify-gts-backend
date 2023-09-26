@@ -4,7 +4,7 @@ import { Request, Response } from "express";
 import Track from "../../entities/track/Track";
 import TracksRepository from "../../repositories/TracksRepository";
 import Artist from "../../entities/artist/Artist";
-import { getTypedItemTracksByType } from "../../repositories/TracksRepository"; 
+import { getTypedItemTracksByType } from "../../repositories/TracksRepository";
 
 class EasyLevelLogic implements LevelLogicInterface {
     configurationGame: ConfigurationGame;
@@ -33,16 +33,16 @@ class EasyLevelLogic implements LevelLogicInterface {
 
         if (!userTopTracks) userTopTracks = [];
         if (!userSavedTracks) userSavedTracks = [];
+        // if (!userTopGenresTracks) userTopGenresTracks = [];
 
 
-        const easyLevelTracks = [...userTopTracks, ...userSavedTracks, ...artistsTopTracks];
+        const easyLevelTracks = [...userTopTracks, ...userSavedTracks, ...artistsTopTracks]; //...userTopGenresTracks - para un nivel medio
         const removeTracksDuplicated = this.removeTracksDuplicated(easyLevelTracks);
         easyLevelPlaylist = this.shuffleFisherYates(removeTracksDuplicated);
 
         if (superToken) {
-            const adjustPlaylistLength = await this.adjustPlaylistLength(superToken, easyLevelPlaylist, tracksQuantity, artists);
-            console.log(adjustPlaylistLength.length);
-            return adjustPlaylistLength;
+            const playlistLengthAdjusted = await this.adjustPlaylistLength(superToken, easyLevelPlaylist, tracksQuantity, artists);
+            return playlistLengthAdjusted;
         }
     }
 
@@ -52,13 +52,15 @@ class EasyLevelLogic implements LevelLogicInterface {
         while (newPlaylist.length < tracksQuantity) {
             for (const artist of artists) {
                 const artistTopTracks = await getTypedItemTracksByType('artist', artist.name, 5, superToken);
-                if (artistTopTracks) newPlaylist.push(...artistTopTracks);
+                const artistTopTracksFiltered = this.removeTracksWithoutPreview(artistTopTracks);
+                if (artistTopTracksFiltered) {
+                    newPlaylist.push(...artistTopTracksFiltered);
+                }
                 newPlaylist = this.removeTracksDuplicated(newPlaylist);
             }
         }
 
         if (tracks.length > tracksQuantity) {
-            console.log('entro al tracks length mayor que tracks quantity');
             newPlaylist = newPlaylist.slice(0, tracksQuantity);
         }
         return newPlaylist;
@@ -75,6 +77,16 @@ class EasyLevelLogic implements LevelLogicInterface {
         });
 
         return uniqueTracks;
+    }
+
+    removeTracksWithoutPreview(tracks: Track[]): Track[] {
+        const tracksToPlayWith: Track[] = [];
+        for (const track of tracks) {
+            if (track.preview_url) {
+                tracksToPlayWith.push(track);
+            }
+        }
+        return tracksToPlayWith;
     }
 
     shuffleFisherYates(array: Track[]): Track[] {

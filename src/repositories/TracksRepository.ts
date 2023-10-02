@@ -275,7 +275,10 @@ export async function getTypedItemTracksByType(type: string, itemName: string, l
 }
 
 function getTracksListsTyped(items: any[]): Track[] {
-    const typedTracks: Track[] = items.map(item => TrackAdapter.adaptTrack(item));
+    let typedTracks: Track[] = [];
+    if (items) {
+        typedTracks = items.map(item => TrackAdapter.adaptTrack(item));
+    }
     return typedTracks;
 }
 

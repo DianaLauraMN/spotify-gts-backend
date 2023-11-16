@@ -15,28 +15,41 @@ class EasyLevelLogic implements LevelLogicInterface {
 
     async getPlayList(req: Request, res: Response): Promise<Track[] | undefined> {
         let easyLevelPlaylist: Track[] = [];
+        let easyLevelTracks: Track[];
+
         const tracksRepository = new TracksRepository();
         const superToken = req.headers.authorization;
         const { configurationGame } = req.body;
-        const { artists, tracksQuantity } = configurationGame;
+        const { artists, tracksQuantity, genres } = configurationGame;
 
-        let artistsTopTracks: Track[] = [];
         let userTopTracks = await tracksRepository.getUserTopTracks(superToken);
         let userSavedTracks = await tracksRepository.getUserSavedTracks(superToken);
         //let userTopGenresTracks = await tracksRepository.getUserTopGenresTracks(superToken);
 
-        for (const artist of artists) {
-            const artistName = artist.name;
-            const artistTopTracks = await tracksRepository.getArtistTopTracks(superToken, artistName);
-            if (artistTopTracks) artistsTopTracks.push(...artistTopTracks);
-        }
-
         if (!userTopTracks) userTopTracks = [];
         if (!userSavedTracks) userSavedTracks = [];
-        // if (!userTopGenresTracks) userTopGenresTracks = [];
+        //if (!userTopGenresTracks) userTopGenresTracks = [];
 
+        if ((!artists) && (!genres)) {
+            easyLevelTracks = [...userTopTracks, ...userSavedTracks]; //...userTopGenresTracks - para un nivel medio
+        } else {
+            let artistsTopTracks: Track[] = [];
+            let genresTracks: Track[] = [];
+            let lastIndex: number;
 
-        const easyLevelTracks = [...userTopTracks, ...userSavedTracks, ...artistsTopTracks]; //...userTopGenresTracks - para un nivel medio
+            for (const artist of artists) {
+                artists.length >= 5 ? lastIndex = 5 : lastIndex = -1;
+                const artistTopTracks = await tracksRepository.getArtistTopTracks(superToken, artist.name);
+                if (artistTopTracks) artistsTopTracks.push(...artistTopTracks.slice(0, lastIndex));
+            }
+
+            for (const genre of genres) {
+                genres.length >= 5 ? lastIndex = 5 : lastIndex = -1;
+                const genreTracks = await tracksRepository.getTracksByGenre(superToken, genre);
+                if (genreTracks) genresTracks.push(...genreTracks.slice(0, lastIndex));
+            }
+            easyLevelTracks = [...artistsTopTracks, ...genresTracks];
+        }
         const removeTracksDuplicated = this.removeTracksDuplicated(easyLevelTracks);
         easyLevelPlaylist = this.shuffleFisherYates(removeTracksDuplicated);
 
@@ -61,6 +74,7 @@ class EasyLevelLogic implements LevelLogicInterface {
         }
 
         if (tracks.length > tracksQuantity) {
+            this.shuffleFisherYates(newPlaylist);
             newPlaylist = newPlaylist.slice(0, tracksQuantity);
         }
         return newPlaylist;

@@ -59,7 +59,9 @@ export async function loadTopArtists(limit: number, superToken: string) {
         const topArtistsResponse = await axios.get(`https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=${limit}&offset=0`, {
             headers: { 'Authorization': superToken }
         });
-        return topArtistsResponse.data.items;
+        if (topArtistsResponse.data.items) {
+            return topArtistsResponse.data.items;
+        }
     } catch (error) {
         console.log('Error while loading Top Artist of current user');
         console.log(error);

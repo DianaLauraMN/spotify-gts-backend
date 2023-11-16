@@ -16,8 +16,14 @@ const apiArtistsController: ApiArtistsInterface = new ApiArtistsController();
 const apiTracksController: ApiTracksInterface = new ApiTracksController();
 const levelsLogic = new LevelsLogic();
 
-appRouter.get('/callback', apiAuthController.getCallback);
-appRouter.get('/api/login', apiAuthController.getAuthentication);
+appRouter.post('/callback', apiAuthController.callback);
+appRouter.post('/api/auth/refreshToken', apiAuthController.refreshToken);
+
+appRouter.get('/api/login', apiAuthController.login);
+
+appRouter.get('/api/auth/authenticate', apiAuthController.initiateAuthentication);
+appRouter.post('/api/auth/handleAuthorizationCode', apiAuthController.handleAuthorizationCode);
+
 appRouter.get('/api/me', apiUserController.getUserData);
 appRouter.get('/api/search/artists/:itemName', apiArtistsController.getArtistsByName);//buscador de artistas
 appRouter.get('/api/search/tracks/:itemName', apiTracksController.getTracksByName);//buscador de tracks

@@ -15,7 +15,7 @@ class ApiUserController implements ApiUserInterface {
             const user: User = UserAdapter.adaptUser(profileResponse.data);
             res.json(user);
         } catch (error) {
-            console.error('Error while getting current user information');
+            console.error('Error while user authentication');
             console.error(error);
         }
     }

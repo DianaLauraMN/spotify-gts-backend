@@ -14,6 +14,7 @@ const apiAuthController: ApiAuthInterface = new ApiAuthController();
 const apiUserController: ApiUserInterface = new ApiUserController();
 const apiArtistsController: ApiArtistsInterface = new ApiArtistsController();
 const apiTracksController: ApiTracksInterface = new ApiTracksController();
+
 const levelsLogic = new LevelsLogic();
 
 appRouter.post('/callback', apiAuthController.callback);
@@ -40,6 +41,8 @@ appRouter.get('/api/me/top/artists', apiArtistsController.getUserTopArtists); //
 appRouter.get('/api/artist/tracks/:artistName', apiTracksController.getArtistAllTracks); //Nivel Medio
 appRouter.get('/api/me/top/genres/tracks', apiTracksController.getUserTopGenresTracks); //Nivel Medio
 appRouter.get('/api/me/top/genres', apiTracksController.getUserTopGenres); //Nivel Medio
+appRouter.get('/api/genres', apiTracksController.getSpotifyGenres); //todos los generos de spotify
+appRouter.get('/api/search/genres/:itemName', apiTracksController.getGenresByName); //todos los generos de spotify
 
 appRouter.get('/api/me/playlists', apiTracksController.getUserPlaylistsTracks); //Normal-Dificil
 appRouter.get('/api/me/recommendations', apiTracksController.getUserRecommendations);//Nivel Dificil

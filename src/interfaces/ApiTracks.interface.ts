@@ -11,4 +11,6 @@ export interface ApiTracksInterface {
     getUserRecommendations(req:Request, res:Response): Promise<void>;
     getUserTopGenresTracks(req:Request, res:Response): Promise<void>;
     getUserTopGenres(req:Request, res:Response): Promise<void>;
+    getSpotifyGenres(req:Request, res:Response): Promise<void>;
+    getGenresByName(req:Request, res:Response): Promise<void>;
 }

@@ -38,7 +38,7 @@ class ApiArtistsController implements ApiArtistsInterface {
         const superToken = req.headers.authorization;
         try {
             if (!superToken) throw console.error('Error, token expected');
-            const topArtistsList = await loadTopArtists(50, superToken);
+            const topArtistsList = await loadTopArtists(0, 50, superToken);
             const topArtists = getArtistsListTyped(topArtistsList);
             res.json(topArtists);
         } catch (error) {
@@ -54,9 +54,9 @@ export function getArtistsListTyped(items: any[]): Artist[] {
     return typedArtists;
 }
 
-export async function loadTopArtists(limit: number, superToken: string) {
+export async function loadTopArtists(offset: number, limit: number, superToken: string) {
     try {
-        const topArtistsResponse = await axios.get(`https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=${limit}&offset=0`, {
+        const topArtistsResponse = await axios.get(`https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=${limit}&offset=${offset}`, {
             headers: { 'Authorization': superToken }
         });
         if (topArtistsResponse.data.items) {

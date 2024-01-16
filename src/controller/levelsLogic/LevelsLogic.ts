@@ -1,32 +1,34 @@
 import { Request, Response } from "express";
-import EasyLevelLogic from "./EasyLevelLogic";
-
+import EasyLevelLogic from "./easyLevelLogic/EasyLevelLogic";
+import NormalLevelLogic from "./normalLevelLogic/NormalLevelLogic";
+import { Levels } from "../../enums/Levels";
+import HardLevelLogic from "./hardLevelLogic/HardLevelLogic";
 class LevelsLogic {
-    // normalLevelLogic: EasyLevelLogic;
-    // hardLevelLogic: EasyLevelLogic;
     constructor() {
 
     }
     async getTracksByLevel(req: Request, res: Response) {
-        const { configurationGame } = req.body;     
-        //console.log(configurationGame);
-         
+        const { configurationGame } = req.body;
         const { level } = configurationGame;
         let tracks: any[] | undefined;
-        if (level === "EASY") {
+
+        if (level === Levels.EASY) {
             const easyLevelLogic: EasyLevelLogic = new EasyLevelLogic();
             easyLevelLogic.setConfigurationGame(configurationGame);
             tracks = await easyLevelLogic.getPlayList(req, res);
+
+        } else if (level === Levels.NORMAL) {
+            const normalLevelLogic: NormalLevelLogic = new NormalLevelLogic();
+            normalLevelLogic.setConfigurationGame(configurationGame);
+            tracks = await normalLevelLogic.getPlayList(req, res);
+
+        } else if (level === Levels.HARD) {
+            const hardLevelLogic: HardLevelLogic = new HardLevelLogic();
+            hardLevelLogic.setConfigurationGame(configurationGame);
+            tracks = await hardLevelLogic.getPlayList(req, res);
         }
-        // else if (level === "NORMAL") {
 
-        // } else if (level === "HARD"){
-
-        // }else{
-        //     throw new Error('Configuration level must be EASY, NORMAL or HARD')
-        // }
-
-        res.json(tracks);
+        if (tracks) { res.json(tracks); }
     }
 }
 

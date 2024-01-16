@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { ApiTracksInterface } from "../../interfaces/ApiTracks.interface";
-import TracksRepository from "../../repositories/TracksRepository";
+import TracksRepository, { getTimeRange } from "../../repositories/TracksRepository";
+import { TimeRange } from "../../enums/TimeRange";
 
 class ApiTracksController implements ApiTracksInterface {
 
@@ -22,8 +23,10 @@ class ApiTracksController implements ApiTracksInterface {
 
     async getUserTopTracks(req: Request, res: Response) {
         const superToken = req.headers.authorization;
+        const { offset, limit, time_range } = req.query;
+        const timeRangeEnumValue = getTimeRange(time_range.toString());
         const tracksRepository = new TracksRepository();
-        const tracks = await tracksRepository.getUserTopTracks(superToken);
+        const tracks = await tracksRepository.getUserTopTracks(superToken, parseInt(offset.toString()), parseInt(limit.toString()), timeRangeEnumValue);
         res.json(tracks);
     }
 
@@ -36,8 +39,9 @@ class ApiTracksController implements ApiTracksInterface {
 
     async getUserSavedTracks(req: Request, res: Response) {
         const superToken = req.headers.authorization;
+        const { offset, limit } = req.query;
         const tracksRepository = new TracksRepository();
-        const tracks = await tracksRepository.getUserSavedTracks(superToken);
+        const tracks = await tracksRepository.getUserSavedTracks(superToken, parseInt(offset.toString()), parseInt(limit.toString()));
         res.json(tracks);
     }
 
@@ -52,15 +56,18 @@ class ApiTracksController implements ApiTracksInterface {
     async getArtistAllTracks(req: Request, res: Response) {
         const superToken = req.headers.authorization;
         const artistName = req.params.artistName;
+        const { offset, limit } = req.query;
         const tracksRepository = new TracksRepository();
-        const tracks = await tracksRepository.getArtistAllTracks(superToken, artistName);
+        const tracks = await tracksRepository.getArtistAllTracks(superToken, artistName, parseInt(offset.toString()), parseInt(limit.toString()));
         res.json(tracks);
     }
 
     async getUserRecommendations(req: Request, res: Response) {
         const superToken = req.headers.authorization;
+        const { offset, limit, time_range } = req.query;
+        const timeRangeEnumValue = getTimeRange(time_range.toString());
         const tracksRepository = new TracksRepository();
-        const tracks = await tracksRepository.getUserRecommendations(superToken);
+        const tracks = await tracksRepository.getUserRecommendations(superToken, parseInt(offset.toString()), parseInt(limit.toString()), timeRangeEnumValue);
         res.json(tracks);
     }
 
@@ -74,7 +81,20 @@ class ApiTracksController implements ApiTracksInterface {
     async getUserTopGenres(req: Request, res: Response) {
         const superToken = req.headers.authorization;
         const tracksRepository = new TracksRepository();
-        const genres = await tracksRepository.getUserTopGenres(superToken);
+        const topGenres = await tracksRepository.getUserTopGenres(superToken);
+        res.json(topGenres);
+    }
+
+    async getSpotifyGenres(req: Request, res: Response) {
+        const tracksRepository = new TracksRepository();
+        const genres = tracksRepository.getSpotifyGenresSeedsCopy();
+        res.json(genres);
+    }
+
+    async getGenresByName(req: Request, res: Response) {
+        const itemName = req.params.itemName;
+        const tracksRepository = new TracksRepository();
+        const genres = tracksRepository.getGenresByName(itemName);
         res.json(genres);
     }
 

@@ -3,11 +3,12 @@ import Track from "../../entities/track/Track";
 import TracksRepository from "../../repositories/TracksRepository";
 import { Levels } from "../../enums/Levels";
 import { TimeRange } from "../../enums/TimeRange";
+import typeManager from "../../manager/typeManager/instanceTM";
 
 class PlaylistManager {
 
     async getNonCustomPlaylist(superToken: string, level: Levels, offset: number, limit: number) {
-        const tracksRepository = new TracksRepository();
+        const tracksRepository = new TracksRepository(typeManager);
         const time_range = this.getTimeRangeByLevel(level);
 
         let userTopTracks = await tracksRepository.getUserTopTracks(superToken, offset, limit, time_range);
@@ -37,7 +38,7 @@ class PlaylistManager {
         while (playlist.length < tracksQuantity) {
             if (artists) {
                 for (const artist of artists) {
-                    const tracksRepository = new TracksRepository();
+                    const tracksRepository = new TracksRepository(typeManager);
                     let artistTopTracks = await tracksRepository.getTracksTyped('track', artist.name, 5, superToken);
 
                     if (artistTopTracks)
@@ -50,7 +51,7 @@ class PlaylistManager {
                 }
 
             } else if (genres) {
-                const tracksRepository = new TracksRepository();
+                const tracksRepository = new TracksRepository(typeManager);
                 let userTopGenresTracks = await tracksRepository.getUserTopGenresTracks(superToken);
 
                 if (userTopGenresTracks)
@@ -73,7 +74,7 @@ class PlaylistManager {
     }
 
     async getArtistsRandomTopTracks(superToken: string, artists: Artist[], level: Levels): Promise<Track[]> {
-        const tracksRepository = new TracksRepository();
+        const tracksRepository = new TracksRepository(typeManager);
         let randomTracks: Track[] = [];
         let randomTracksShuffled: Track[] = [];
         let maximumIndex: number;
@@ -120,7 +121,7 @@ class PlaylistManager {
     }
 
     async getGenresRandomTopTracks(superToken: string, genres: string[]): Promise<Track[]> {
-        const tracksRepository = new TracksRepository();
+        const tracksRepository = new TracksRepository(typeManager);
         let genresTracks: Track[] = [];
         let tracksShuffled: Track[] = [];
         let maximumIndex: number;
@@ -140,7 +141,7 @@ class PlaylistManager {
 
         // Verifica si el track no está en uniqueTracks antes de agregarlo
         tracks.forEach((track) => {
-            if (!uniqueTracks.some((uniqueTrack) => uniqueTrack.id === track.id || (uniqueTrack.name === track.name && uniqueTrack.artists[0].name === track.artists[0].name))) { 
+            if (!uniqueTracks.some((uniqueTrack) => uniqueTrack.id === track.id || (uniqueTrack.name === track.name && uniqueTrack.artists[0].name === track.artists[0].name))) {
                 uniqueTracks.push(track);
             }
         });

@@ -1,6 +1,4 @@
 import { Router } from "express";
-import ApiAuthController from "../controller/api/ApiSpotifyAuthController";
-import { ApiAuthInterface } from "../interfaces/ApiAuth.interface";
 import ApiTracksController from "../controller/api/ApiSpotifyTracksController";
 import { ApiTracksInterface } from "../interfaces/ApiTracks.interface";
 import ApiArtistsController from "../controller/api/ApiSpotifyArtistsController";
@@ -10,20 +8,11 @@ import { ApiUserInterface } from "../interfaces/ApiUser.interface";
 import LevelsLogic from "../controller/levelsLogic/LevelsLogic";
 
 const appRouter = Router();
-const apiAuthController: ApiAuthInterface = new ApiAuthController();
 const apiUserController: ApiUserInterface = new ApiUserController();
 const apiArtistsController: ApiArtistsInterface = new ApiArtistsController();
 const apiTracksController: ApiTracksInterface = new ApiTracksController();
 
 const levelsLogic = new LevelsLogic();
-
-appRouter.post('/callback', apiAuthController.callback);
-appRouter.post('/api/auth/refreshToken', apiAuthController.refreshToken);
-
-appRouter.get('/api/login', apiAuthController.login);
-
-appRouter.get('/api/auth/authenticate', apiAuthController.initiateAuthentication);
-appRouter.post('/api/auth/handleAuthorizationCode', apiAuthController.handleAuthorizationCode);
 
 appRouter.get('/api/me', apiUserController.getUserData);
 appRouter.get('/api/search/artists/:itemName', apiArtistsController.getArtistsByName);//buscador de artistas

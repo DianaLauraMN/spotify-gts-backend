@@ -1,6 +1,4 @@
 import { Router } from "express";
-import ApiAuthController from "../controller/api/ApiSpotifyAuthController";
-import { ApiAuthInterface } from "../interfaces/ApiAuth.interface";
 import ApiTracksController from "../controller/api/ApiSpotifyTracksController";
 import { ApiTracksInterface } from "../interfaces/ApiTracks.interface";
 import ApiArtistsController from "../controller/api/ApiSpotifyArtistsController";
@@ -10,19 +8,11 @@ import { ApiUserInterface } from "../interfaces/ApiUser.interface";
 import LevelsLogic from "../controller/levelsLogic/LevelsLogic";
 
 const appRouter = Router();
-const apiAuthController: ApiAuthInterface = new ApiAuthController();
 const apiUserController: ApiUserInterface = new ApiUserController();
 const apiArtistsController: ApiArtistsInterface = new ApiArtistsController();
 const apiTracksController: ApiTracksInterface = new ApiTracksController();
+
 const levelsLogic = new LevelsLogic();
-
-appRouter.post('/callback', apiAuthController.callback);
-appRouter.post('/api/auth/refreshToken', apiAuthController.refreshToken);
-
-appRouter.get('/api/login', apiAuthController.login);
-
-appRouter.get('/api/auth/authenticate', apiAuthController.initiateAuthentication);
-appRouter.post('/api/auth/handleAuthorizationCode', apiAuthController.handleAuthorizationCode);
 
 appRouter.get('/api/me', apiUserController.getUserData);
 appRouter.get('/api/search/artists/:itemName', apiArtistsController.getArtistsByName);//buscador de artistas
@@ -40,6 +30,8 @@ appRouter.get('/api/me/top/artists', apiArtistsController.getUserTopArtists); //
 appRouter.get('/api/artist/tracks/:artistName', apiTracksController.getArtistAllTracks); //Nivel Medio
 appRouter.get('/api/me/top/genres/tracks', apiTracksController.getUserTopGenresTracks); //Nivel Medio
 appRouter.get('/api/me/top/genres', apiTracksController.getUserTopGenres); //Nivel Medio
+appRouter.get('/api/genres', apiTracksController.getSpotifyGenres); //todos los generos de spotify
+appRouter.get('/api/search/genres/:itemName', apiTracksController.getGenresByName); //todos los generos de spotify
 
 appRouter.get('/api/me/playlists', apiTracksController.getUserPlaylistsTracks); //Normal-Dificil
 appRouter.get('/api/me/recommendations', apiTracksController.getUserRecommendations);//Nivel Dificil

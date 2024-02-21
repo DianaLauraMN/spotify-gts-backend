@@ -15,7 +15,6 @@ class NormalLevelLogic implements LevelLogicInterface {
     async getPlayList(req: Request, res: Response): Promise<Track[] | undefined> {
         let normalLevelPlaylist: Track[] = [];
         let normalLevelTracks: Track[];
-
         const playlistManager = new PlaylistManager();
 
         const superToken = req.headers.authorization;
@@ -25,13 +24,18 @@ class NormalLevelLogic implements LevelLogicInterface {
         if (artists.length === 0 && genres.length === 0) {
             normalLevelTracks = await playlistManager.getNonCustomPlaylist(superToken, Levels.NORMAL, 5, 40);
         } else {
-            let artistsRandomTopTracks: Track[] = await playlistManager.getArtistsRandomTopTracks(superToken, artists, Levels.NORMAL);
-            let genresTracks: Track[] = await playlistManager.getGenresRandomTopTracks(superToken, genres);
+
+            let artistsRandomTopTracks: Track[] = [];
+            let genresTracks: Track[] = [];
+
+            if (artists.length > 0)
+                artistsRandomTopTracks = await playlistManager.getRandomTopTracksByArtists(superToken, artists, Levels.NORMAL);
+            if (genres.length > 0) genresTracks = await playlistManager.getRandomTopTracksByGenre(superToken, genres);
             normalLevelTracks = [...artistsRandomTopTracks, ...genresTracks];
         }
-        
+
         if (superToken) {
-            normalLevelPlaylist = await playlistManager.adjustPlaylistLength(superToken, normalLevelTracks, tracksQuantity, artists, genres); //para evitar el error de retorno
+            normalLevelPlaylist = await playlistManager.adjustPlaylistLength(superToken, normalLevelTracks, tracksQuantity, artists, genres);
             return normalLevelPlaylist;
         }
     }

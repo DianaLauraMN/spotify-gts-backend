@@ -14,8 +14,7 @@ class EasyLevelLogic implements LevelLogicInterface {
 
     async getPlayList(req: Request, res: Response): Promise<Track[] | undefined> {
         let easyLevelPlaylist: Track[] = [];
-        let easyLevelTracks: Track[];
-
+        let easyLevelTracks: Track[] = [];
         const playlistManager = new PlaylistManager();
 
         const superToken = req.headers.authorization;
@@ -25,11 +24,16 @@ class EasyLevelLogic implements LevelLogicInterface {
         if (artists.length === 0 && genres.length === 0) {
             easyLevelTracks = await playlistManager.getNonCustomPlaylist(superToken, Levels.EASY, 0, 35);
         } else {
-            let artistsRandomTopTracks: Track[] = await playlistManager.getArtistsRandomTopTracks(superToken, artists, Levels.EASY);
-            let genresTracks: Track[] = await playlistManager.getGenresRandomTopTracks(superToken, genres);            
+
+            let artistsRandomTopTracks: Track[] = [];
+            let genresTracks: Track[] = [];
+
+            if (artists.length > 0)
+                artistsRandomTopTracks = await playlistManager.getRandomTopTracksByArtists(superToken, artists, Levels.EASY);
+            if (genres.length > 0) genresTracks = await playlistManager.getRandomTopTracksByGenre(superToken, genres);
             easyLevelTracks = [...artistsRandomTopTracks, ...genresTracks];
         }
-
+        
         if (superToken) {
             easyLevelPlaylist = await playlistManager.adjustPlaylistLength(superToken, easyLevelTracks, tracksQuantity, artists, genres);
             return easyLevelPlaylist;

@@ -1,32 +1,48 @@
 import Artist from "../../entities/artist/Artist";
 import Track from "../../entities/track/Track";
-import TracksRepository from "../../repositories/TracksRepository";
 import { Levels } from "../../enums/Levels";
 import { TimeRange } from "../../enums/TimeRange";
+import GenreManager from "../../manager/genreManager/GenreManager";
 import typeManager from "../../manager/typeManager/instanceTM";
+import ArtistRepository from "../../repositories/ArtistRepository";
+import TrackRepository from "../../repositories/TrackRepository";
+import TracksService from "../../service/TracksService";
 
 class PlaylistManager {
 
-    async getNonCustomPlaylist(superToken: string, level: Levels, offset: number, limit: number) {
-        const tracksRepository = new TracksRepository(typeManager);
+    async getNonCustomPlaylist(access_token: string, level: Levels, offset: number, limit: number) {
+        const trackRepository = TrackRepository.getInstance();
+        const artistRepository = ArtistRepository.getInstance();
+        const genreManager = new GenreManager();
         const time_range = this.getTimeRangeByLevel(level);
 
-        let userTopTracks = await tracksRepository.getUserTopTracks(superToken, offset, limit, time_range);
-        let userSavedTracks = await tracksRepository.getUserSavedTracks(superToken, offset, limit);
-        let userTopGenresTracks = await tracksRepository.getUserTopGenresTracks(superToken);
+        let topTracksByTopArtists: Track[] = [];
+        let userTopArtist: Artist[] = [];
 
-        if (!userTopTracks) userTopTracks = [];
-        if (!userSavedTracks) userSavedTracks = [];
-        if (!userTopGenresTracks) userTopGenresTracks = [];
+        let userTopTracks = await trackRepository.getUserTopTracks(access_token, offset, limit, time_range);
+        if (userTopTracks) userTopTracks = typeManager.typeTrackList(userTopTracks)
+        else userTopTracks = [];
 
+        userTopArtist = await artistRepository.getUserTopArtists(access_token, 0, 3, time_range);
+
+        if (userTopArtist) {
+            let artistsTopTracksPromises = userTopArtist.map(artist => trackRepository.getArtistTopTracks(access_token, artist));
+            let artiststopTracks: Track[] = await Promise.all(artistsTopTracksPromises);
+            topTracksByTopArtists = artiststopTracks.flat();
+        }
 
         switch (level) {
             case Levels.EASY:
-                return this.removeDuplicateTracks([...userTopTracks, ...userSavedTracks]);
+                let userSavedTracks = await trackRepository.getUserSavedTracks(access_token, offset, limit);
+                if (userSavedTracks) userSavedTracks = typeManager.typeTrackList(userSavedTracks);
+                else userSavedTracks = [];
+                return this.removeDuplicateTracks([...userTopTracks, ...userSavedTracks, ...topTracksByTopArtists]);
             case Levels.NORMAL:
-                return this.removeDuplicateTracks([...userTopTracks, ...userTopGenresTracks]);
+                return this.removeDuplicateTracks([...userTopTracks, ...topTracksByTopArtists]);
             case Levels.HARD:
-                return this.removeDuplicateTracks([...userTopTracks, ...userTopGenresTracks]);
+                let userTopGenresTracks = await genreManager.getUserTopGenresTracks(access_token);
+                if (!userTopGenresTracks) userTopGenresTracks = [];
+                return this.removeDuplicateTracks([...userTopTracks, ...userTopGenresTracks, ...topTracksByTopArtists]);
             default:
                 return [];
         }
@@ -34,12 +50,14 @@ class PlaylistManager {
 
     async adjustPlaylistLength(superToken: string, tracks: Track[], tracksQuantity: number, artists: Artist[], genres: String[]): Promise<Track[]> {
         let playlist: Track[] = tracks;
+        const tracksService = new TracksService();
+        const genreManager = new GenreManager();
 
         while (playlist.length < tracksQuantity) {
-            if (artists) {
+
+            if (artists.length > 0) {
                 for (const artist of artists) {
-                    const tracksRepository = new TracksRepository(typeManager);
-                    let artistTopTracks = await tracksRepository.getTracksTyped('track', artist.name, 5, superToken);
+                    let artistTopTracks = await tracksService.searchTrackItemTyped('track', artist.name, 5, superToken);
 
                     if (artistTopTracks)
                         artistTopTracks = this.filterTracksWithPreview(artistTopTracks);
@@ -50,9 +68,8 @@ class PlaylistManager {
                     playlist = this.removeDuplicateTracks(playlist);
                 }
 
-            } else if (genres) {
-                const tracksRepository = new TracksRepository(typeManager);
-                let userTopGenresTracks = await tracksRepository.getUserTopGenresTracks(superToken);
+            } else if (genres.length > 0) {
+                let userTopGenresTracks = await genreManager.getUserTopGenresTracks(superToken);
 
                 if (userTopGenresTracks)
                     userTopGenresTracks = this.filterTracksWithPreview(userTopGenresTracks);
@@ -73,8 +90,7 @@ class PlaylistManager {
         return playlist;
     }
 
-    async getArtistsRandomTopTracks(superToken: string, artists: Artist[], level: Levels): Promise<Track[]> {
-        const tracksRepository = new TracksRepository(typeManager);
+    async getRandomTopTracksByArtists(access_token: string, artists: Artist[], level: Levels): Promise<Track[]> {
         let randomTracks: Track[] = [];
         let randomTracksShuffled: Track[] = [];
         let maximumIndex: number;
@@ -84,28 +100,45 @@ class PlaylistManager {
         for (const artist of artists) {
             artists.length >= 5 ? maximumIndex = 5 : maximumIndex = -1;
             artistName = artist.name;
+            const trackRepository = TrackRepository.getInstance();
+            const artistRepository = ArtistRepository.getInstance();
 
             switch (level) {
                 case Levels.EASY:
-                    const artistTopTracks = await tracksRepository.getArtistTopTracks(superToken, artist.name);
-                    const savedTracks = await tracksRepository.getUserSavedTracks(superToken, 0, 50);
-                    const userTopTracks = await tracksRepository.getUserTopTracks(superToken, 0, 50, TimeRange.short_term);
 
-                    const savedArtistTracks = savedTracks.filter(track => {
-                        return track.artists.some(artist => artist.name === artistName);
+                    const artists: Artist[] = await artistRepository.getArtistsByName(access_token, artist.name, 0, 50);
+                    const artistRequired = artists.find((artist: { id: string; name: string; }) => artist.name.toLowerCase() === artist.name.toLowerCase());
+                    let artistTopTracks = await trackRepository.getArtistTopTracks(access_token, artistRequired);
+                    if (artistTopTracks) artistTopTracks = typeManager.typeTrackList(artistTopTracks);
+
+                    const savedTracks = await trackRepository.getUserSavedTracks(access_token, 0, 50);
+                    let userSavedTracks = savedTracks.map((item: { track: any; }) => item.track);
+                    if (userSavedTracks) userSavedTracks = typeManager.typeTrackList(userSavedTracks);
+                    else userSavedTracks = [];
+
+
+                    let savedArtistTracks = userSavedTracks?.filter((track: { artists: any[]; }) => {
+                        return track.artists.some((artist: { name: string; }) => artist.name === artistName);
                     });
 
-                    const userTopArtistTracks = userTopTracks.filter(track => {
-                        return track.artists.some(artist => artist.name === artistName);
+                    const userTopTracks = await trackRepository.getUserTopTracks(access_token, 0, 50, TimeRange.short_term);
+
+                    let userTopArtistTracks = userTopTracks?.filter((track: { artists: any[]; }) => {
+                        return track.artists.some((artist: { name: string; }) => artist.name === artistName);
                     });
+
+                    if (!userTopArtistTracks) userTopArtistTracks = [];
+                    if (!savedArtistTracks) savedArtistTracks = [];
+                    if (!artistTopTracks) artistTopTracks = [];
 
                     artistsTracks = [...artistTopTracks, ...savedArtistTracks, ...userTopArtistTracks];
                     break;
                 case Levels.NORMAL:
-                    artistsTracks = await tracksRepository.getArtistAllTracks(superToken, artist.name, 10, 50);
+                    const allTracks = await trackRepository.getArtistAllTracks(access_token, artist.name, 10, 50);
+                    artistsTracks = typeManager.typeTrackList(allTracks);
                     break;
                 case Levels.HARD:
-                    artistsTracks = await tracksRepository.getArtistAllTracks(superToken, artist.name, 20, 50);
+                    artistsTracks = await trackRepository.getArtistAllTracks(access_token, artist.name, 20, 50);
                     break;
             }
             if (artistsTracks) artistsTracks = this.removeDuplicateTracks(artistsTracks);
@@ -120,18 +153,30 @@ class PlaylistManager {
         return randomTracks;
     }
 
-    async getGenresRandomTopTracks(superToken: string, genres: string[]): Promise<Track[]> {
-        const tracksRepository = new TracksRepository(typeManager);
+    async getRandomTopTracksByGenre(superToken: string, genres: string[]): Promise<Track[]> {
+        const tracksService = new TracksService();
         let genresTracks: Track[] = [];
         let tracksShuffled: Track[] = [];
         let maximumIndex: number;
+        genres.length >= 5 ? maximumIndex = 5 : maximumIndex = undefined;
+
+        let tracksPromises;
+        let tracksByGenres: Track[][];
 
         for (const genre of genres) {
-            genres.length >= 5 ? maximumIndex = 5 : maximumIndex = undefined;
-            const genreTracks = await tracksRepository.getTracksByGenre(superToken, genre);
+            const genreTracks = await tracksService.getTracksByGenre(superToken, genre);
             if (genreTracks) tracksShuffled = this.shuffleTracksByFisherYates(genreTracks);
+            if (tracksShuffled) tracksShuffled = this.removeDuplicateTracks(tracksShuffled);
             if (tracksShuffled) genresTracks.push(...tracksShuffled.slice(0, maximumIndex));
         }
+
+        tracksPromises = genres.map(genre => tracksService.getTracksByGenre(superToken, genre));
+        tracksByGenres = await Promise.all(tracksPromises);
+        const flattenedGenresTracks = tracksByGenres.flat();
+
+        if (flattenedGenresTracks) tracksShuffled = this.shuffleTracksByFisherYates(flattenedGenresTracks);
+        if (tracksShuffled) tracksShuffled = this.removeDuplicateTracks(tracksShuffled);
+        if (tracksShuffled) genresTracks.push(...tracksShuffled.slice(0, maximumIndex));
 
         return genresTracks;
     }
@@ -146,7 +191,8 @@ class PlaylistManager {
             }
         });
 
-        return uniqueTracks;
+        const uniqueValidTracks = this.filterTracksWithPreview(uniqueTracks);
+        return uniqueValidTracks;
     }
 
     filterTracksWithPreview(tracks: Track[]): Track[] {

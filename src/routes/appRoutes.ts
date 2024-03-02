@@ -22,12 +22,12 @@ appRouter.get('/api/artist/:artistId', apiArtistsController.getArtistById);
 appRouter.get('/api/track/:trackId', apiTracksController.getTrackById);
 
 appRouter.get('/api/me/favorite/tracks', apiTracksController.getUserSavedTracks);
-appRouter.get('/api/me/top/tracks', apiTracksController.getUserTopTracks); //TODOS LOS NIVELES non custom
-appRouter.get('/api/artist/top/tracks/:itemName', apiTracksController.getArtistTopTracks); //Nivel Facil
+appRouter.get('/api/me/top/tracks', apiTracksController.getUserTopTracks); //TODOS LOS NIVELES non custom.
+appRouter.get('/api/artist/top/tracks/:itemName', apiTracksController.getArtistTopTracks); //Nivel Facil.
 
-appRouter.get('/api/me/top/artists', apiArtistsController.getUserTopArtists); //TODOS NIVELES
-appRouter.get('/api/artist/tracks/:artistName', apiTracksController.getArtistAllTracks); //Custom
-appRouter.get('/api/me/top/genres/tracks', apiTracksController.getUserTopGenresTracks); //Nivel Dificil
+appRouter.get('/api/me/top/artists', apiArtistsController.getUserTopArtists); //TODOS NIVELES.
+appRouter.get('/api/artist/tracks/:artistName', apiTracksController.getArtistAllTracks); //Custom preferences.
+appRouter.get('/api/me/top/genres/tracks', apiTracksController.getUserTopGenresTracks); //Nivel Dificil.
 appRouter.get('/api/me/top/genres', apiTracksController.getUserTopGenres); 
 appRouter.get('/api/genres', apiTracksController.getSpotifyGenres); 
 appRouter.get('/api/search/genres/:itemName', apiTracksController.getGenresByName); 

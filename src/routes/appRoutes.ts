@@ -21,20 +21,19 @@ appRouter.get('/api/search/tracks/:itemName', apiTracksController.getTracksByNam
 appRouter.get('/api/artist/:artistId', apiArtistsController.getArtistById);
 appRouter.get('/api/track/:trackId', apiTracksController.getTrackById);
 
-appRouter.get('/api/me/favorite/tracks', apiTracksController.getUserSavedTracks); //TODOS LOS NIVELES
+appRouter.get('/api/me/favorite/tracks', apiTracksController.getUserSavedTracks);
+appRouter.get('/api/me/top/tracks', apiTracksController.getUserTopTracks); //TODOS LOS NIVELES non custom.
+appRouter.get('/api/artist/top/tracks/:itemName', apiTracksController.getArtistTopTracks); //Nivel Facil.
 
-appRouter.get('/api/me/top/tracks', apiTracksController.getUserTopTracks); //Nivel Facil
-appRouter.get('/api/artist/top/tracks/:itemName', apiTracksController.getArtistTopTracks); //Nivel Facil
+appRouter.get('/api/me/top/artists', apiArtistsController.getUserTopArtists); //TODOS NIVELES.
+appRouter.get('/api/artist/tracks/:artistName', apiTracksController.getArtistAllTracks); //Custom preferences.
+appRouter.get('/api/me/top/genres/tracks', apiTracksController.getUserTopGenresTracks); //Nivel Dificil.
+appRouter.get('/api/me/top/genres', apiTracksController.getUserTopGenres); 
+appRouter.get('/api/genres', apiTracksController.getSpotifyGenres); 
+appRouter.get('/api/search/genres/:itemName', apiTracksController.getGenresByName); 
 
-appRouter.get('/api/me/top/artists', apiArtistsController.getUserTopArtists); //Nivel Medio 
-appRouter.get('/api/artist/tracks/:artistName', apiTracksController.getArtistAllTracks); //Nivel Medio
-appRouter.get('/api/me/top/genres/tracks', apiTracksController.getUserTopGenresTracks); //Nivel Medio
-appRouter.get('/api/me/top/genres', apiTracksController.getUserTopGenres); //Nivel Medio
-appRouter.get('/api/genres', apiTracksController.getSpotifyGenres); //todos los generos de spotify
-appRouter.get('/api/search/genres/:itemName', apiTracksController.getGenresByName); //todos los generos de spotify
-
-appRouter.get('/api/me/playlists', apiTracksController.getUserPlaylistsTracks); //Normal-Dificil
-appRouter.get('/api/me/recommendations', apiTracksController.getUserRecommendations);//Nivel Dificil
+appRouter.get('/api/me/playlists', apiTracksController.getUserPlaylistsTracks); 
+appRouter.get('/api/me/recommendations', apiTracksController.getUserRecommendations);
 
 appRouter.post('/api/tracksByLevel', levelsLogic.getTracksByLevel);
 

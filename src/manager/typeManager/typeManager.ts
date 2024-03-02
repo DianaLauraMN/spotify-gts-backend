@@ -37,13 +37,15 @@ class TypeManager {
     }
 
     getValidTracks(tracks: any[]): Track[] {
-        const validTracks = tracks.filter((track: { id?: string | null }) => track && track.id !== null);
+        const validTracks = tracks.filter((track: any) => this.areTrackAttributesValid(track));
         const allTracksTyped: Track[] = typeManager.typeTrackList(validTracks);
 
         return allTracksTyped.length > 0 ? allTracksTyped : [];
     }
 
     getArtistsListTyped(items: any[]): Artist[] {
+        if (!items) { return []; }
+
         const typedArtists: Artist[] = items.map(item => ArtistAdapter.adaptArtist(item));
         return typedArtists;
     }
@@ -59,6 +61,36 @@ class TypeManager {
             default:
                 return undefined;
         }
+    }
+
+    areTrackAttributesValid(track: any): boolean {
+
+        if (!track || !track.id) {
+            return false;
+        }
+
+        if (!track.name || track.name.trim() === '') {
+            return false;
+        }
+
+        if (!track.artists || track.artists.length === 0) {
+            return false;
+        }
+
+        if (!track.album || !track.album.images || track.album.images.length === 0 || !track.album.images[0].url) {
+            return false;
+        }
+
+        if (!track.preview_url || track.preview_url.trim() === '') {
+            return false;
+        }
+
+        if (!track.type || track.type.trim() === '') {
+            return false;
+        }
+
+        return true;
+
     }
 
 }

@@ -4,7 +4,6 @@ import { appRouter } from './routes/appRoutes';
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-//import session from 'express-session';
 
 dotenv.config({ path: '../.env' }); // Ruta a tu archivo .env
 
@@ -14,8 +13,6 @@ const PORT = 3000;
 app.use(cors({
     origin: ['http://localhost:5173', 'https://accounts.spotify.com']
 }));
-
-//app.use(cors()); // Habilita todas las solicitudes CORS
 
 const corsOptions = {
     origin: 'http://localhost:5173',

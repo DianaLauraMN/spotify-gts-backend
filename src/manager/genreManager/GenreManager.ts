@@ -134,9 +134,6 @@ class GenreManager {
             return userTopGenresTracks;
         } catch (error) {
             console.log('Error while getting user top genres tracks');
-
-            // console.log(error);
-            //throw new Error('Error while getting user Top genres Tracks')
         }
     }
 

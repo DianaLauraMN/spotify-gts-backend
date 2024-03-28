@@ -20,11 +20,6 @@ class LevelsLogic {
 
         tracks = await levelLogic.getPlayList(req, res);
         res.json(tracks);
-
-        tracks.forEach(track => {
-           console.log(track.name);
-            
-        });
     }
 
     initializeLevelLogic(level: Levels): LevelLogicInterface {

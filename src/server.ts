@@ -5,14 +5,14 @@ import { ENV_VALUES } from './variables';
 
 const app = express();
 
-const corsOptions = {
-    origin: [ENV_VALUES.FRONTEND_URL, ENV_VALUES.SPOTIFY_ACCOUNTS_URL],
-    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
-    credentials: true,
-    optionsSuccessStatus: 200,
-};
+// const corsOptions = {
+//     origin: [ENV_VALUES.FRONTEND_URL, ENV_VALUES.SPOTIFY_ACCOUNTS_URL],
+//     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+//     credentials: true,
+//     optionsSuccessStatus: 200,
+// };
 
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(json());
 app.use(urlencoded({ extended: true }));
 app.use(appRouter);

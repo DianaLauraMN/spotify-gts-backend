@@ -52,18 +52,39 @@ class PlaylistManager {
         let playlist: Track[] = tracks;
         const tracksService = new TracksService();
         const genreManager = new GenreManager();
+        const trackRepository = TrackRepository.getInstance();
 
         while (playlist.length < tracksQuantity) {
 
             if (artists.length > 0) {
                 for (const artist of artists) {
-                    let artistTopTracks = await tracksService.searchTrackItemTyped('track', artist.name, 5, superToken);
 
-                    if (artistTopTracks)
-                        artistTopTracks = this.filterTracksWithPreview(artistTopTracks);
+                    let artistTopTracks = await trackRepository.getArtistTopTracks(superToken, artist);
+                    if (artistTopTracks) artistTopTracks = typeManager.typeTrackList(artistTopTracks);
 
-                    if (artistTopTracks)
-                        playlist.push(...artistTopTracks);
+                    if (artistTopTracks.length < tracksQuantity) {
+                        let itemsToAdd;
+                        switch (artists.length) {
+                            case 1:
+                                itemsToAdd = await trackRepository.getItemRecommendations('artist', artist.id, tracksQuantity - artistTopTracks.length, superToken);
+                                itemsToAdd = typeManager.typeTrackList(itemsToAdd.tracks);
+                                break;
+                            default:
+                                itemsToAdd = await tracksService.searchTrackItemTyped('track', artist.name, 5, superToken);
+                                break;
+                        }
+
+                        itemsToAdd = this.filterTracksWithPreview(itemsToAdd);
+                        playlist.push(...itemsToAdd, ...artistTopTracks);
+
+
+                    } else {
+                        if (artistTopTracks)
+                            artistTopTracks = this.filterTracksWithPreview(artistTopTracks);
+
+                        if (artistTopTracks)
+                            playlist.push(...artistTopTracks);
+                    }
 
                     playlist = this.removeDuplicateTracks(playlist);
                 }
@@ -101,21 +122,16 @@ class PlaylistManager {
             artists.length >= 5 ? maximumIndex = 5 : maximumIndex = -1;
             artistName = artist.name;
             const trackRepository = TrackRepository.getInstance();
-            const artistRepository = ArtistRepository.getInstance();
 
             switch (level) {
                 case Levels.EASY:
-
-                    const artists: Artist[] = await artistRepository.getArtistsByName(access_token, artist.name, 0, 50);
-                    const artistRequired = artists.find((artist: { id: string; name: string; }) => artist.name.toLowerCase() === artist.name.toLowerCase());
-                    let artistTopTracks = await trackRepository.getArtistTopTracks(access_token, artistRequired);
+                    let artistTopTracks = await trackRepository.getArtistTopTracks(access_token, artist);
                     if (artistTopTracks) artistTopTracks = typeManager.typeTrackList(artistTopTracks);
 
                     const savedTracks = await trackRepository.getUserSavedTracks(access_token, 0, 50);
                     let userSavedTracks = savedTracks.map((item: { track: any; }) => item.track);
                     if (userSavedTracks) userSavedTracks = typeManager.typeTrackList(userSavedTracks);
                     else userSavedTracks = [];
-
 
                     let savedArtistTracks = userSavedTracks?.filter((track: { artists: any[]; }) => {
                         return track.artists.some((artist: { name: string; }) => artist.name === artistName);

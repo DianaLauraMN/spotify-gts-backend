@@ -125,8 +125,8 @@ class PlaylistManager {
 
             switch (level) {
                 case Levels.EASY:
-                    let artistTopTracks = await trackRepository.getArtistTopTracks(access_token, artist);
-                    if (artistTopTracks) artistTopTracks = typeManager.typeTrackList(artistTopTracks);
+                    let artistAllTracks =await trackRepository.getArtistAllTracks(access_token, artist.name, 0, 30);
+                    if (artistAllTracks) artistAllTracks = typeManager.typeTrackList(artistAllTracks);
 
                     const savedTracks = await trackRepository.getUserSavedTracks(access_token, 0, 50);
                     let userSavedTracks = savedTracks.map((item: { track: any; }) => item.track);
@@ -145,9 +145,9 @@ class PlaylistManager {
 
                     if (!userTopArtistTracks) userTopArtistTracks = [];
                     if (!savedArtistTracks) savedArtistTracks = [];
-                    if (!artistTopTracks) artistTopTracks = [];
+                    if (!artistAllTracks) artistAllTracks = [];
 
-                    artistsTracks = [...artistTopTracks, ...savedArtistTracks, ...userTopArtistTracks];
+                    artistsTracks = [...artistAllTracks, ...savedArtistTracks, ...userTopArtistTracks];
                     break;
                 case Levels.NORMAL:
                     const allTracks = await trackRepository.getArtistAllTracks(access_token, artist.name, 10, 50);
